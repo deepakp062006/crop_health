@@ -1,0 +1,2252 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>AI Crop Health Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        leaf: { 50: '#f2f7ef', 100: '#e2eeda', 200: '#c3ddb2', 300: '#9fc884', 400: '#78ac5c', 500: '#4c8c39', 600: '#3a7229', 700: '#2f6b3c', 800: '#1f4d29', 900: '#163c22' },
+                        sand: { 50: '#fdfbf6', 100: '#f7f1e2', 200: '#f0e7d0', 300: '#e6d8b8' },
+                        clay: { 500: '#e0973f', 600: '#c1592e', 700: '#a8481f' },
+                    },
+                    fontFamily: {
+                        display: ['"Baloo 2"', 'sans-serif'],
+                        body: ['Inter', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        soft: '0 2px 10px rgba(22,60,34,0.08)',
+                        card: '0 4px 18px rgba(22,60,34,0.10)',
+                        pop: '0 10px 30px rgba(22,60,34,0.16)',
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --leaf-900: #163c22;
+            --leaf-700: #2f6b3c;
+            --leaf-500: #4c8c39;
+            --sand-50: #fdfbf6;
+            --sand-100: #f7f1e2;
+            --clay-600: #c1592e;
+            --amber-500: #e0973f;
+        }
+
+        html,
+        body {
+            background: var(--sand-50);
+            font-family: 'Inter', sans-serif;
+            color: var(--leaf-900);
+        }
+
+        body {
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+            padding-top: env(safe-area-inset-top, 0px);
+        }
+
+        h1,
+        h2,
+        h3,
+        .font-display {
+            font-family: 'Baloo 2', sans-serif;
+        }
+
+        ::selection {
+            background: #c3ddb2;
+        }
+
+        .safe-top {
+            padding-top: env(safe-area-inset-top, 0px);
+        }
+
+        .safe-bottom {
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        .scrollbar-none::-webkit-scrollbar {
+            display: none;
+        }
+
+        .scrollbar-none {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .leaf-btn {
+            transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease;
+        }
+
+        .leaf-btn:active {
+            transform: scale(0.97);
+        }
+
+        .card-hover {
+            transition: transform .15s ease, box-shadow .15s ease;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 26px rgba(22, 60, 34, 0.14);
+        }
+
+        @keyframes fadeSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .enter {
+            animation: fadeSlideUp .35s ease both;
+        }
+
+        @keyframes scanline {
+            0% {
+                top: 0%;
+            }
+
+            50% {
+                top: 100%;
+            }
+
+            100% {
+                top: 0%;
+            }
+        }
+
+        .scan-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #7fdc7a, transparent);
+            box-shadow: 0 0 16px 4px rgba(76, 140, 57, 0.65);
+            animation: scanline 2.6s ease-in-out infinite;
+        }
+
+        @keyframes pulseRing {
+            0% {
+                box-shadow: 0 0 0 0 rgba(76, 140, 57, 0.35);
+            }
+
+            70% {
+                box-shadow: 0 0 0 14px rgba(76, 140, 57, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(76, 140, 57, 0);
+            }
+        }
+
+        .pulse-ring {
+            animation: pulseRing 2s infinite;
+        }
+
+        @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px) translateX(-50%);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) translateX(-50%);
+            }
+        }
+
+        .toast {
+            animation: toastIn .25s ease both;
+        }
+
+        .switch {
+            width: 44px;
+            height: 26px;
+            border-radius: 999px;
+            position: relative;
+            transition: background-color .15s ease;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .switch .dot {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            transition: left .15s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .switch.on {
+            background: var(--leaf-500);
+        }
+
+        .switch.off {
+            background: #d9d2c2;
+        }
+
+        .switch.on .dot {
+            left: 21px;
+        }
+
+        .lang-toggle-btn {
+            transition: all .15s ease;
+        }
+
+        input[type=range].risk-range {
+            -webkit-appearance: none;
+            height: 10px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #4c8c39, #e0973f, #c1592e);
+        }
+
+        input[type=range].risk-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 0;
+            height: 0;
+        }
+
+        .marker-dot {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.15);
+        }
+
+        @media (max-width: 767px) {
+            .desktop-only {
+                display: none !important;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .mobile-only {
+                display: none !important;
+            }
+        }
+
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible,
+        select:focus-visible,
+        [tabindex]:focus-visible {
+            outline: 3px solid #2f6b3c;
+            outline-offset: 2px;
+            border-radius: 6px;
+        }
+
+        .skip-link {
+            position: absolute;
+            left: -999px;
+            top: 0;
+            background: #163c22;
+            color: #fff;
+            padding: 10px 16px;
+            border-radius: 0 0 10px 0;
+            z-index: 500;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .skip-link:focus {
+            left: 0;
+        }
+    </style>
+</head>
+
+<body class="bg-sand-50 text-leaf-900">
+    <a href="#main-content" class="skip-link">Skip to content</a>
+    <div id="app" class="min-h-screen flex flex-col"></div>
+    <div id="toast-root" class="fixed top-4 left-1/2 z-[200] flex flex-col items-center gap-2 pointer-events-none">
+    </div>
+    <div id="modal-root"></div>
+
+    <script>
+            (function () {
+                "use strict";
+
+                /* ============================= DATA ============================= */
+
+                var STORAGE_KEY = 'acha_state_v1';
+
+                var CROPS = [
+                    { id: 'tomato', en: 'Tomato', ta: 'தக்காளி', icon: '🍅' },
+                    { id: 'paddy', en: 'Paddy', ta: 'நெல்', icon: '🌾' },
+                    { id: 'chilli', en: 'Chilli', ta: 'மிளகாய்', icon: '🌶️' },
+                    { id: 'cotton', en: 'Cotton', ta: 'பருத்தி', icon: '☁️' },
+                    { id: 'banana', en: 'Banana', ta: 'வாழை', icon: '🍌' },
+                    { id: 'brinjal', en: 'Brinjal', ta: 'கத்தரிக்காய்', icon: '🍆' },
+                    { id: 'groundnut', en: 'Groundnut', ta: 'நிலக்கடலை', icon: '🥜' },
+                    { id: 'sugarcane', en: 'Sugarcane', ta: 'கரும்பு', icon: '🎋' },
+                    { id: 'maize', en: 'Maize', ta: 'சோளம்', icon: '🌽' },
+                    { id: 'onion', en: 'Onion', ta: 'வெங்காயம்', icon: '🧅' }
+                ];
+
+                function cropById(id) { return CROPS.find(function (c) { return c.id === id; }); }
+                function cropName(id) { var c = cropById(id); if (!c) return id; return state.language === 'ta' ? c.ta : c.en; }
+                function cropIcon(id) { var c = cropById(id); return c ? c.icon : '🌿'; }
+
+                var MOCK_RESULTS = {
+                    tomato: {
+                        issueEn: 'Early Blight', issueTa: 'ஆரம்பகால இலைக் கருகல்', confidence: 87, health: 82, risk: 'moderate',
+                        detected: [
+                            { en: 'Dark spots', ta: 'கருமையான புள்ளிகள்', descEn: 'Potentially associated with fungal infection patterns.', descTa: 'பூஞ்சை தொற்று அறிகுறிகளுடன் தொடர்புடையதாக இருக்கலாம்.', color: '#7a4a2b', x: 32, y: 40 },
+                            { en: 'Yellowing', ta: 'மஞ்சள் நிறமாதல்', descEn: 'May indicate stress or disease progression.', descTa: 'மன அழுத்தம் அல்லது நோய் முன்னேற்றத்தைக் குறிக்கலாம்.', color: '#e0c33f', x: 60, y: 58 },
+                            { en: 'Irregular leaf pattern', ta: 'ஒழுங்கற்ற இலை அமைப்பு', descEn: 'Uneven leaf texture noticed around affected area.', descTa: 'பாதிக்கப்பட்ட பகுதியில் சீரற்ற இலை அமைப்பு காணப்படுகிறது.', color: '#c1592e', x: 48, y: 72 }
+                        ]
+                    },
+                    paddy: {
+                        issueEn: 'No major issue detected', issueTa: 'குறிப்பிடத்தக்க பிரச்சனை இல்லை', confidence: 93, health: 94, risk: 'low',
+                        detected: [
+                            { en: 'Normal green coloration', ta: 'இயல்பான பச்சை நிறம்', descEn: 'Leaf color is within a healthy range.', descTa: 'இலை நிறம் ஆரோக்கியமான அளவில் உள்ளது.', color: '#4c8c39', x: 40, y: 45 },
+                            { en: 'No significant lesions', ta: 'குறிப்பிடத்தக்க காயங்கள் இல்லை', descEn: 'No visible disease lesions were found.', descTa: 'தெரியும் நோய் காயங்கள் எதுவும் காணப்படவில்லை.', color: '#78ac5c', x: 60, y: 60 }
+                        ]
+                    },
+                    chilli: {
+                        issueEn: 'Possible Leaf Curl / Pest Stress', issueTa: 'இலை சுருள் / பூச்சி தாக்கம் இருக்கலாம்', confidence: 81, health: 76, risk: 'high',
+                        detected: [
+                            { en: 'Leaf curling', ta: 'இலை சுருள்தல்', descEn: 'Edges of the leaf are curling inward.', descTa: 'இலையின் விளிம்புகள் உள்நோக்கி சுருள்கின்றன.', color: '#c1592e', x: 35, y: 35 },
+                            { en: 'Yellowing', ta: 'மஞ்சள் நிறமாதல்', descEn: 'Patchy yellowing seen between veins.', descTa: 'நரம்புகளுக்கிடையே புள்ளி புள்ளியாக மஞ்சள் நிறம்.', color: '#e0c33f', x: 55, y: 55 },
+                            { en: 'Pest marks', ta: 'பூச்சி தடயங்கள்', descEn: 'Small marks consistent with pest activity.', descTa: 'பூச்சி செயல்பாட்டிற்கு ஒத்த சிறிய தடயங்கள்.', color: '#a8481f', x: 65, y: 70 }
+                        ]
+                    },
+                    cotton: {
+                        issueEn: 'Possible Nutrient Stress', issueTa: 'ஊட்டச்சத்து குறைபாடு இருக்கலாம்', confidence: 78, health: 79, risk: 'moderate',
+                        detected: [
+                            { en: 'Pale leaf color', ta: 'வெளிர் இலை நிறம்', descEn: 'Overall leaf color appears lighter than expected.', descTa: 'இலையின் நிறம் எதிர்பார்த்ததை விட வெளிறியதாக உள்ளது.', color: '#e0c33f', x: 42, y: 42 },
+                            { en: 'Vein discoloration', ta: 'நரம்பு நிற மாற்றம்', descEn: 'Slight discoloration seen along leaf veins.', descTa: 'இலை நரம்புகளில் சிறிய நிற மாற்றம்.', color: '#c1592e', x: 58, y: 62 }
+                        ]
+                    },
+                    _default: {
+                        issueEn: 'Possible Mild Stress', issueTa: 'லேசான அழுத்தம் இருக்கலாம்', confidence: 74, health: 80, risk: 'moderate',
+                        detected: [
+                            { en: 'Slight discoloration', ta: 'சிறிய நிற மாற்றம்', descEn: 'Minor color variation observed on the leaf surface.', descTa: 'இலை மேற்பரப்பில் சிறிய நிற மாற்றம் கவனிக்கப்பட்டது.', color: '#e0c33f', x: 45, y: 48 },
+                            { en: 'Uneven texture', ta: 'சீரற்ற அமைப்பு', descEn: 'Some unevenness in leaf texture near the edges.', descTa: 'விளிம்புகளுக்கு அருகில் சிறிய சீரற்ற அமைப்பு.', color: '#7a4a2b', x: 60, y: 65 }
+                        ]
+                    }
+                };
+
+                var CROP_GUIDE = [
+                    {
+                        id: 'tomato', category: 'vegetables', diseases: ['Early Blight', 'Late Blight', 'Leaf Curl', 'Nutrient Stress'],
+                        pests: ['Fruit Borer', 'Whitefly'], deficiencies: ['Nitrogen (pale leaves)', 'Calcium (blossom end rot)'],
+                        basicEn: 'A widely grown vegetable crop that is sensitive to leaf moisture and humid conditions.',
+                        basicTa: 'இலை ஈரப்பதம் மற்றும் அதிக ஈரப்பதத்திற்கு உணர்திறன் கொண்ட, பரவலாக பயிரிடப்படும் காய்கறி பயிர்.',
+                        preventionEn: 'Avoid overhead watering, ensure good spacing for airflow, and rotate crops each season.',
+                        preventionTa: 'மேலிருந்து நீர் பாய்ச்சுவதை தவிர்க்கவும், காற்று ஓட்டத்திற்கு போதுமான இடைவெளி வைக்கவும், ஒவ்வொரு பருவத்திலும் பயிர் சுழற்சி செய்யவும்.'
+                    },
+                    {
+                        id: 'paddy', category: 'cereals', diseases: ['Blast', 'Sheath Blight', 'Brown Spot'],
+                        pests: ['Stem Borer', 'Brown Plant Hopper'], deficiencies: ['Nitrogen (yellowing)', 'Zinc (stunted growth)'],
+                        basicEn: 'A staple cereal crop grown in flooded fields, sensitive to fungal disease in humid weather.',
+                        basicTa: 'தண்ணீர் நிரம்பிய வயல்களில் பயிரிடப்படும் முக்கிய தானிய பயிர், ஈரப்பதமான காலநிலையில் பூஞ்சை நோய்களுக்கு உணர்திறன் கொண்டது.',
+                        preventionEn: 'Maintain proper water levels, avoid excess nitrogen, and monitor fields weekly during humid spells.',
+                        preventionTa: 'சரியான நீர் மட்டத்தை பராமரிக்கவும், அதிக நைட்ரஜனை தவிர்க்கவும், ஈரப்பதமான காலங்களில் வாரந்தோறும் வயலை கண்காணிக்கவும்.'
+                    },
+                    {
+                        id: 'chilli', category: 'vegetables', diseases: ['Leaf Curl', 'Anthracnose', 'Thrips damage'],
+                        pests: ['Thrips', 'Aphids'], deficiencies: ['Magnesium (interveinal yellowing)'],
+                        basicEn: 'A cash crop sensitive to pest pressure, particularly thrips and aphids in dry weather.',
+                        basicTa: 'வறண்ட காலநிலையில் நுணுங்கு பூச்சி மற்றும் இலை பேன் போன்ற பூச்சிகளுக்கு உணர்திறன் கொண்ட ஒரு வணிக பயிர்.',
+                        preventionEn: 'Use yellow/blue sticky traps, avoid water stress, and inspect the underside of leaves regularly.',
+                        preventionTa: 'மஞ்சள்/நீல ஒட்டும் பொறிகளை பயன்படுத்தவும், நீர் பற்றாக்குறையை தவிர்க்கவும், இலையின் அடிப்பகுதியை தவறாமல் பரிசோதிக்கவும்.'
+                    },
+                    {
+                        id: 'cotton', category: 'cash', diseases: ['Leaf Reddening', 'Boll Rot'],
+                        pests: ['Pink Bollworm', 'Whitefly'], deficiencies: ['Potassium (leaf reddening)'],
+                        basicEn: 'A major cash crop that is vulnerable to bollworm attack and nutrient stress in later stages.',
+                        basicTa: 'பிற்கால நிலைகளில் காய்ப்புழு தாக்குதல் மற்றும் ஊட்டச்சத்து குறைபாட்டிற்கு பாதிக்கப்படக்கூடிய ஒரு முக்கிய வணிக பயிர்.',
+                        preventionEn: 'Monitor with pheromone traps, ensure balanced fertilization, and remove affected bolls promptly.',
+                        preventionTa: 'பெரோமோன் பொறிகள் மூலம் கண்காணிக்கவும், சமச்சீர் உரமிடல் செய்யவும், பாதிக்கப்பட்ட காய்களை உடனடியாக அகற்றவும்.'
+                    },
+                    {
+                        id: 'banana', category: 'fruits', diseases: ['Panama Wilt', 'Sigatoka Leaf Spot'],
+                        pests: ['Banana Weevil'], deficiencies: ['Potassium (leaf margin scorch)'],
+                        basicEn: 'A perennial fruit crop requiring consistent moisture and protection from wilt diseases.',
+                        basicTa: 'தொடர்ச்சியான ஈரப்பதம் மற்றும் வாடல் நோய்களிலிருந்து பாதுகாப்பு தேவைப்படும் வற்றாத பழப் பயிர்.',
+                        preventionEn: 'Use disease-free suckers, maintain drainage, and remove infected plants to stop spread.',
+                        preventionTa: 'நோயற்ற கன்றுகளை பயன்படுத்தவும், வடிகால் வசதியை பராமரிக்கவும், தொற்று பரவாமல் இருக்க பாதிக்கப்பட்ட செடிகளை அகற்றவும்.'
+                    },
+                    {
+                        id: 'brinjal', category: 'vegetables', diseases: ['Fruit Borer Damage', 'Bacterial Wilt'],
+                        pests: ['Shoot & Fruit Borer'], deficiencies: ['Boron (fruit deformity)'],
+                        basicEn: 'A common vegetable crop that is prone to shoot and fruit borer infestation.',
+                        basicTa: 'தண்டு மற்றும் காய் துளைப்பான் தாக்குதலுக்கு ஆளாகக்கூடிய பொதுவான காய்கறி பயிர்.',
+                        preventionEn: 'Prune and destroy affected shoots, and use pheromone traps to reduce borer populations.',
+                        preventionTa: 'பாதிக்கப்பட்ட தண்டுகளை வெட்டி அழிக்கவும், துளைப்பான் எண்ணிக்கையை குறைக்க பெரோமோன் பொறிகளை பயன்படுத்தவும்.'
+                    },
+                    {
+                        id: 'groundnut', category: 'pulses', diseases: ['Leaf Spot', 'Rust'],
+                        pests: ['Leaf Miner'], deficiencies: ['Calcium (poor pod filling)'],
+                        basicEn: 'An oilseed/pulse crop sensitive to leaf spot diseases during humid periods.',
+                        basicTa: 'ஈரப்பதமான காலங்களில் இலைப்புள்ளி நோய்களுக்கு உணர்திறன் கொண்ட எண்ணெய் வித்து/பருப்பு பயிர்.',
+                        preventionEn: 'Rotate crops, ensure good drainage, and apply gypsum at flowering for better pod development.',
+                        preventionTa: 'பயிர் சுழற்சி செய்யவும், வடிகால் வசதியை உறுதி செய்யவும், சிறந்த காய் வளர்ச்சிக்கு பூக்கும் தருணத்தில் ஜிப்சம் இடவும்.'
+                    },
+                    {
+                        id: 'sugarcane', category: 'cash', diseases: ['Red Rot', 'Smut'],
+                        pests: ['Early Shoot Borer'], deficiencies: ['Iron (interveinal chlorosis)'],
+                        basicEn: 'A long-duration cash crop vulnerable to red rot in waterlogged conditions.',
+                        basicTa: 'நீர் தேங்கும் நிலைமைகளில் சிவப்பு அழுகலுக்கு ஆளாகக்கூடிய நீண்ட கால வணிக பயிர்.',
+                        preventionEn: 'Use disease-free setts, avoid waterlogging, and remove and destroy infected clumps.',
+                        preventionTa: 'நோயற்ற நடுகைத் துண்டுகளை பயன்படுத்தவும், நீர் தேங்குவதை தவிர்க்கவும், தொற்றுக்குள்ளான கொத்துக்களை அகற்றி அழிக்கவும்.'
+                    },
+                    {
+                        id: 'maize', category: 'cereals', diseases: ['Leaf Blight', 'Stalk Rot'],
+                        pests: ['Fall Armyworm'], deficiencies: ['Nitrogen (V-shaped yellowing)'],
+                        basicEn: 'A cereal crop currently facing pressure from fall armyworm in many regions.',
+                        basicTa: 'பல பகுதிகளில் தற்போது இராணுவப் புழு தாக்குதலை எதிர்கொள்ளும் தானிய பயிர்.',
+                        preventionEn: 'Scout fields early and often, use pheromone traps, and avoid late sowing where possible.',
+                        preventionTa: 'வயலை முன்கூட்டியே அடிக்கடி பரிசோதிக்கவும், பெரோமோன் பொறிகளை பயன்படுத்தவும், தாமதமான விதைப்பை தவிர்க்கவும்.'
+                    },
+                    {
+                        id: 'onion', category: 'vegetables', diseases: ['Purple Blotch', 'Downy Mildew'],
+                        pests: ['Thrips'], deficiencies: ['Sulphur (pale, thin leaves)'],
+                        basicEn: 'A bulb vegetable crop that is highly sensitive to humidity and thrips damage.',
+                        basicTa: 'ஈரப்பதம் மற்றும் நுணுங்கு பூச்சி தாக்குதலுக்கு அதிக உணர்திறன் கொண்ட கிழங்கு காய்கறி பயிர்.',
+                        preventionEn: 'Ensure good field drainage, avoid dense planting, and monitor closely during humid weeks.',
+                        preventionTa: 'வயலில் நல்ல வடிகால் வசதியை உறுதி செய்யவும், அடர்த்தியான நடவை தவிர்க்கவும், ஈரப்பதமான வாரங்களில் நெருக்கமாக கண்காணிக்கவும்.'
+                    }
+                ];
+
+                var CATEGORIES = [
+                    { id: 'vegetables', en: 'Vegetables', ta: 'காய்கறிகள்' },
+                    { id: 'fruits', en: 'Fruits', ta: 'பழங்கள்' },
+                    { id: 'cereals', en: 'Cereals', ta: 'தானியங்கள்' },
+                    { id: 'pulses', en: 'Pulses', ta: 'பருப்பு வகைகள்' },
+                    { id: 'cash', en: 'Cash Crops', ta: 'வணிகப் பயிர்கள்' }
+                ];
+
+                var FORECAST = [
+                    { day: 'Sun', dayTa: 'ஞாயிறு', hi: 29, lo: 24 },
+                    { day: 'Mon', dayTa: 'திங்கள்', hi: 30, lo: 24 },
+                    { day: 'Tue', dayTa: 'செவ்வாய்', hi: 28, lo: 23 },
+                    { day: 'Wed', dayTa: 'புதன்', hi: 27, lo: 23 },
+                    { day: 'Thu', dayTa: 'வியாழன்', hi: 29, lo: 24 },
+                    { day: 'Fri', dayTa: 'வெள்ளி', hi: 30, lo: 24 },
+                    { day: 'Sat', dayTa: 'சனி', hi: 31, lo: 25 }
+                ];
+
+                var CURRENT_WEATHER = { temp: 28, condition: 'Partly Cloudy', conditionTa: 'ஓரளவு மேகமூட்டம்', humidity: 78, wind: 14, rain: 65, uv: 'Moderate', uvTa: 'நடுத்தரம்' };
+
+                /* ============================= TRANSLATIONS ============================= */
+
+                var T = {
+                    en: {
+                        brand_name: 'AI Crop Health Assistant', tagline: 'See the Problem. Save the Crop.',
+                        demo_mode: 'Demo Mode', demo_mode_tip: 'AI and weather results are simulated for prototype demonstration.',
+                        nav_home: 'Home', nav_scan: 'Scan Crop', nav_crops: 'My Crops', nav_weather: 'Weather', nav_guide: 'Crop Guide',
+                        nav_history: 'History', nav_profile: 'Profile', nav_settings: 'Settings', nav_notifications: 'Notifications',
+                        welcome_get_started: 'Get Started', welcome_continue_demo: 'Continue as Demo Farmer',
+                        onb1_t: 'Scan Your Crop', onb1_d: 'Take a picture of a leaf to check for possible crop health issues.',
+                        onb2_t: 'Understand the Problem', onb2_d: 'Get visual explanations and simple guidance.',
+                        onb3_t: 'Track Crop Health', onb3_d: 'Save reports and monitor crop health over time.',
+                        btn_next: 'Next', btn_back: 'Back', btn_skip: 'Skip', btn_start: 'Start Using App',
+                        home_heading: 'See the Problem. Save the Crop.',
+                        home_sub: 'Take a photo of your crop leaf and get an easy-to-understand AI health analysis.',
+                        cta_scan: 'Scan Your Crop', cta_view_crops: 'View My Crops',
+                        stat_crops: 'My Crops', stat_scans: 'Scans Completed', stat_healthy: 'Healthy Crops', stat_monitor: 'Crops to Monitor',
+                        recent_health: 'Recent Crop Health', view_details: 'View Details',
+                        weather_today: "Today's Weather", humidity: 'Humidity', rain_chance: 'Rain Chance',
+                        weather_warning: 'High humidity may increase disease risk for some crops.', view_full_weather: 'View Full Weather',
+                        quick_actions: 'Quick Actions', qa_scan_t: 'Scan Crop', qa_scan_d: 'Analyze a new leaf',
+                        qa_add_t: 'Add Crop', qa_add_d: 'Track a new crop', qa_weather_t: 'Weather', qa_weather_d: 'Check crop-related weather insights',
+                        qa_guide_t: 'Crop Guide', qa_guide_d: 'Learn about crop health',
+                        how_heading: 'How It Works',
+                        how1_t: 'Take a Photo', how1_d: 'Capture a clear image of your crop leaf.',
+                        how2_t: 'AI Analysis', how2_d: 'AI examines visible patterns and symptoms.',
+                        how3_t: 'Understand', how3_d: 'Get possible issues with a visual explanation.',
+                        how4_t: 'Act', how4_d: 'Receive practical next-step guidance.',
+                        how5_t: 'Track', how5_d: 'Monitor your crop health over time.',
+                        trust_heading: 'Built for Farmers',
+                        trust1_t: 'Simple', trust1_d: 'Easy to use even for first-time users.',
+                        trust2_t: 'Accessible', trust2_d: 'Tamil + English support.',
+                        trust3_t: 'Practical', trust3_d: 'Focuses on understanding and next steps.',
+                        disclaimer: 'AI Crop Health Assistant provides preliminary visual screening information for educational and decision-support purposes. It does not replace professional agricultural diagnosis. Farmers should confirm significant crop health issues with qualified local agricultural experts and follow locally approved treatment guidance.',
+                        scan_heading: 'Scan Your Crop', scan_sub: 'Take or upload a clear photo of the crop leaf.',
+                        take_photo: 'Take Photo', upload_gallery: 'Upload from Gallery',
+                        remove: 'Remove', replace: 'Replace Image',
+                        what_crop: 'What crop is this?', i_dont_know: "I don't know",
+                        add_more_details: 'Add More Details', crop_age: 'Crop Age', farm_location: 'Farm Location',
+                        last_watered: 'Last Watered', recent_rain: 'Recent Rain', yes: 'Yes', no: 'No',
+                        age_1: 'Less than 1 month', age_2: '1–3 months', age_3: '3–6 months', age_4: 'More than 6 months',
+                        analyze_crop: 'Analyze Crop', analyzing_btn: 'Analyzing…',
+                        err_no_image: 'Please upload a crop image before analyzing.',
+                        err_bad_type: 'Please upload a JPG, PNG, JPEG, or WEBP image.',
+                        err_too_large: 'Please upload an image smaller than 10 MB.',
+                        err_select_crop: 'Please select a crop before analyzing.',
+                        analyzing_heading: 'Analyzing Your Crop...',
+                        stage_received: 'Image received', stage_color: 'Examining leaf color', stage_patterns: 'Detecting visible patterns',
+                        stage_comparing: 'Comparing crop symptoms', stage_recommendations: 'Preparing recommendations',
+                        report_heading: 'Crop Health Report', possible_issue: 'Possible Issue', confidence_label: 'Confidence',
+                        health_score_label: 'Health Score', status_label: 'Status',
+                        status_healthy: 'Healthy', status_monitor: 'Monitor Closely', status_attention: 'Needs Attention',
+                        toggle_original: 'Original', toggle_detection: 'AI Detection',
+                        ai_disclaimer: 'This is an AI-based screening result and should be confirmed with a local agricultural expert before treatment.',
+                        what_ai_detected: 'What AI Detected',
+                        recommended_steps: 'Recommended Next Steps',
+                        step1: 'Inspect nearby plants for similar symptoms.',
+                        step2: 'Remove severely affected plant parts where appropriate.',
+                        step3: 'Avoid prolonged leaf wetness.',
+                        step4: 'Monitor the crop again after a few days.',
+                        step5: 'Consult a local agricultural professional before applying any chemical treatment.',
+                        important_label: 'Important',
+                        important_text: 'Do not apply pesticides or fertilizers solely based on this AI result. Confirm the problem and follow locally approved agricultural guidance.',
+                        weather_insight: 'Weather Insight', current_conditions: 'Current Conditions',
+                        weather_insight_text: 'High humidity and upcoming rain may create conditions favorable for some leaf diseases. Monitor affected plants closely and avoid unnecessary leaf wetness.',
+                        risk_level: 'Risk Level', risk_low: 'Low', risk_moderate: 'Moderate', risk_high: 'High', view_weather: 'View Weather',
+                        btn_save_report: 'Save Report', btn_scan_another: 'Scan Another Leaf', btn_add_to_crops: 'Add to My Crops',
+                        btn_share_report: 'Share Report', btn_back_dashboard: 'Back to Dashboard',
+                        toast_report_saved: 'Crop health report saved successfully.',
+                        toast_crop_added: 'Crop added successfully.', toast_scan_deleted: 'Scan deleted.',
+                        toast_profile_updated: 'Profile updated.', toast_language_changed: 'Language changed.',
+                        my_crops_heading: 'My Crops', add_new_crop: '+ Add New Crop',
+                        field_label: 'Field', planted_label: 'Planted', health_label: 'Health', last_scan_label: 'Last Scan', scans_label: 'Scans',
+                        view_crop: 'View Crop', scan_again: 'Scan Again',
+                        no_crops_msg: "You haven't added any crops yet.", add_first_crop: 'Add Your First Crop',
+                        add_crop_heading: 'Add New Crop', crop_name_label: 'Crop Name', field_name_label: 'Field Name',
+                        planting_date_label: 'Planting Date', area_label: 'Area', area_placeholder: 'e.g. 2 acres',
+                        add_crop_btn: 'Add Crop', cancel: 'Cancel',
+                        crop_health_trend: 'Crop Health Trend', recent_scans: 'Recent Scans', view_report: 'View Report',
+                        crop_journey: 'Crop Health Journey', crop_added: 'Crop Added', first_scan: 'Scan', issue_detected: 'Possible issue detected',
+                        weather_heading: 'Weather for Your Farm', your_location: 'Your Location', change: 'Change',
+                        seven_day: '7-Day Forecast', wind: 'Wind', uv: 'UV',
+                        crop_alerts: 'Crop Weather Alerts',
+                        rain_alert_t: 'Rain Alert', rain_alert_d: 'Rain is expected within the next 24 hours.',
+                        humidity_alert_t: 'Humidity Alert', humidity_alert_d: 'High humidity may increase the risk of certain crop diseases.',
+                        heat_alert_t: 'Heat Alert', heat_alert_d: 'Temperature may stress sensitive crops.',
+                        view_crop_recs: 'View Crop Recommendations',
+                        guide_heading: 'Crop Guide', guide_search: 'Search crops or diseases...',
+                        common_issues: 'Common issues', basic_info: 'Basic Information', common_diseases: 'Common Diseases',
+                        common_pests: 'Common Pests', nutrient_def: 'Nutrient Deficiency Symptoms', prevention: 'Prevention',
+                        seek_expert: 'When to Seek Expert Help', seek_expert_text: 'If symptoms spread quickly, cover most of the plant, or do not improve after basic care, consult a local agricultural expert promptly.',
+                        scan_this: 'Scan', history_heading: 'Scan History', all: 'All',
+                        filter_crop: 'Crop', filter_status: 'Status', search_scans: 'Search scans...',
+                        delete: 'Delete', confirm_delete_t: 'Delete this scan?', confirm_delete_d: 'This action cannot be undone.',
+                        confirm: 'Delete', empty_history: 'No crop scans yet.',
+                        notifications_heading: 'Notifications',
+                        notif_new_scan: 'New Scan Saved', notif_scan_saved_d: 'scan saved successfully.',
+                        notif_rain: 'Rain Alert', notif_rain_d: 'Rain expected tomorrow.',
+                        notif_reminder: 'Crop Monitoring Reminder', notif_reminder_d: 'has not been scanned for 5 days.',
+                        notif_healthy: 'Healthy Crop', notif_healthy_d: 'health remains stable.',
+                        no_notifications: 'No notifications yet.',
+                        profile_heading: 'Profile', name_label: 'Name', phone_label: 'Phone Number', village_label: 'Village / City',
+                        district_label: 'District', state_label: 'State', primary_lang_label: 'Primary Language',
+                        preferred_crop_label: 'Preferred Crop', edit_profile: 'Edit Profile', save_changes: 'Save Changes',
+                        language_settings: 'Language', notification_settings: 'Notification Settings', clear_demo_data: 'Clear Demo Data',
+                        clear_confirm_t: 'Clear all demo data?', clear_confirm_d: 'This will reset the app to its original demo state. This cannot be undone.',
+                        settings_heading: 'Settings', notif_toggle: 'Notifications', weather_alerts_toggle: 'Weather Alerts',
+                        reminders_toggle: 'Crop Monitoring Reminders', data_section: 'Data', clear_scan_history: 'Clear Scan History',
+                        appearance: 'Appearance', appearance_note: 'Light mode only for now — dark mode is coming soon.',
+                        file_label: 'File', size_label: 'Size',
+                        select_placeholder: 'Select crop', back: 'Back'
+                    },
+                    ta: {
+                        brand_name: 'AI பயிர் ஆரோக்கிய உதவியாளர்', tagline: 'பிரச்சனையை பாருங்கள். பயிரை காப்பாற்றுங்கள்.',
+                        demo_mode: 'டெமோ முறை', demo_mode_tip: 'AI மற்றும் வானிலை முடிவுகள் முன்மாதிரி நிரூபணத்திற்காக உருவகப்படுத்தப்பட்டவை.',
+                        nav_home: 'முகப்பு', nav_scan: 'பயிரை ஸ்கேன் செய்யவும்', nav_crops: 'என் பயிர்கள்', nav_weather: 'வானிலை', nav_guide: 'பயிர் வழிகாட்டி',
+                        nav_history: 'வரலாறு', nav_profile: 'சுயவிவரம்', nav_settings: 'அமைப்புகள்', nav_notifications: 'அறிவிப்புகள்',
+                        welcome_get_started: 'தொடங்குங்கள்', welcome_continue_demo: 'டெமோ விவசாயியாக தொடரவும்',
+                        onb1_t: 'பயிரை ஸ்கேன் செய்யவும்', onb1_d: 'சாத்தியமான பயிர் ஆரோக்கிய பிரச்சனைகளை சரிபார்க்க இலையின் புகைப்படம் எடுக்கவும்.',
+                        onb2_t: 'பிரச்சனையை புரிந்துகொள்ளுங்கள்', onb2_d: 'காட்சி விளக்கங்கள் மற்றும் எளிய வழிகாட்டுதலைப் பெறுங்கள்.',
+                        onb3_t: 'பயிர் ஆரோக்கியத்தை கண்காணிக்கவும்', onb3_d: 'அறிக்கைகளை சேமித்து, காலப்போக்கில் பயிர் ஆரோக்கியத்தை கண்காணிக்கவும்.',
+                        btn_next: 'அடுத்து', btn_back: 'பின்செல்', btn_skip: 'தவிர்', btn_start: 'பயன்பாட்டைத் தொடங்கு',
+                        home_heading: 'பிரச்சனையை பாருங்கள். பயிரை காப்பாற்றுங்கள்.',
+                        home_sub: 'உங்கள் பயிர் இலைக்கு புகைப்படம் எடுத்து, AI மூலம் எளிதாக புரிந்துகொள்ளக்கூடிய ஆரோக்கிய அறிக்கையைப் பெறுங்கள்.',
+                        cta_scan: 'பயிரை ஸ்கேன் செய்யவும்', cta_view_crops: 'என் பயிர்களைப் பார்க்கவும்',
+                        stat_crops: 'என் பயிர்கள்', stat_scans: 'முடிக்கப்பட்ட ஸ்கேன்கள்', stat_healthy: 'ஆரோக்கியமான பயிர்கள்', stat_monitor: 'கண்காணிக்க வேண்டிய பயிர்கள்',
+                        recent_health: 'சமீபத்திய பயிர் ஆரோக்கியம்', view_details: 'விவரங்களைப் பார்க்கவும்',
+                        weather_today: 'இன்றைய வானிலை', humidity: 'ஈரப்பதம்', rain_chance: 'மழை வாய்ப்பு',
+                        weather_warning: 'அதிக ஈரப்பதம் சில பயிர்களுக்கு நோய் அபாயத்தை அதிகரிக்கலாம்.', view_full_weather: 'முழு வானிலையைப் பார்க்கவும்',
+                        quick_actions: 'விரைவு செயல்கள்', qa_scan_t: 'பயிரை ஸ்கேன் செய்யவும்', qa_scan_d: 'புதிய இலையை பகுப்பாய்வு செய்யவும்',
+                        qa_add_t: 'பயிர் சேர்க்கவும்', qa_add_d: 'புதிய பயிரை கண்காணிக்கவும்', qa_weather_t: 'வானிலை', qa_weather_d: 'பயிர் தொடர்பான வானிலை தகவல்களைப் பார்க்கவும்',
+                        qa_guide_t: 'பயிர் வழிகாட்டி', qa_guide_d: 'பயிர் ஆரோக்கியம் பற்றி அறியவும்',
+                        how_heading: 'இது எப்படி வேலை செய்கிறது',
+                        how1_t: 'புகைப்படம் எடுக்கவும்', how1_d: 'உங்கள் பயிர் இலையின் தெளிவான படத்தை எடுக்கவும்.',
+                        how2_t: 'AI பகுப்பாய்வு', how2_d: 'AI காணக்கூடிய அறிகுறிகளை பரிசோதிக்கிறது.',
+                        how3_t: 'புரிந்துகொள்ளுங்கள்', how3_d: 'காட்சி விளக்கத்துடன் சாத்தியமான பிரச்சனைகளைப் பெறுங்கள்.',
+                        how4_t: 'செயல்படுங்கள்', how4_d: 'நடைமுறை அடுத்த-படி வழிகாட்டுதலைப் பெறுங்கள்.',
+                        how5_t: 'கண்காணிக்கவும்', how5_d: 'காலப்போக்கில் உங்கள் பயிர் ஆரோக்கியத்தை கண்காணிக்கவும்.',
+                        trust_heading: 'விவசாயிகளுக்காக உருவாக்கப்பட்டது',
+                        trust1_t: 'எளிமையானது', trust1_d: 'முதல் முறை பயனர்களுக்கும் பயன்படுத்த எளிது.',
+                        trust2_t: 'அணுகக்கூடியது', trust2_d: 'தமிழ் + ஆங்கில ஆதரவு.',
+                        trust3_t: 'நடைமுறைசார்ந்தது', trust3_d: 'புரிதல் மற்றும் அடுத்த படிகளில் கவனம் செலுத்துகிறது.',
+                        disclaimer: 'AI பயிர் ஆரோக்கிய உதவியாளர் கல்வி மற்றும் முடிவெடுப்பதற்கு உதவும் நோக்கங்களுக்காக ஆரம்பநிலை காட்சி பரிசோதனை தகவலை வழங்குகிறது. இது தொழில்முறை வேளாண் நோயறிதலுக்கு மாற்றாக இல்லை. குறிப்பிடத்தக்க பயிர் ஆரோக்கிய பிரச்சனைகளை தகுதிவாய்ந்த உள்ளூர் வேளாண் நிபுணர்களிடம் உறுதிப்படுத்தி, உள்ளூரில் அங்கீகரிக்கப்பட்ட சிகிச்சை வழிகாட்டுதலைப் பின்பற்ற வேண்டும்.',
+                        scan_heading: 'பயிரை ஸ்கேன் செய்யவும்', scan_sub: 'பயிர் இலையின் தெளிவான புகைப்படத்தை எடுக்கவும் அல்லது பதிவேற்றவும்.',
+                        take_photo: 'புகைப்படம் எடுக்கவும்', upload_gallery: 'கேலரியிலிருந்து பதிவேற்றவும்',
+                        remove: 'அகற்று', replace: 'படத்தை மாற்று',
+                        what_crop: 'இது என்ன பயிர்?', i_dont_know: 'எனக்குத் தெரியாது',
+                        add_more_details: 'மேலும் விவரங்களைச் சேர்க்கவும்', crop_age: 'பயிர் வயது', farm_location: 'பண்ணை இடம்',
+                        last_watered: 'கடைசியாக நீர் பாய்ச்சியது', recent_rain: 'சமீபத்திய மழை', yes: 'ஆம்', no: 'இல்லை',
+                        age_1: '1 மாதத்திற்கும் குறைவு', age_2: '1–3 மாதங்கள்', age_3: '3–6 மாதங்கள்', age_4: '6 மாதங்களுக்கும் மேல்',
+                        analyze_crop: 'பயிரை பகுப்பாய்வு செய்யவும்', analyzing_btn: 'பகுப்பாய்வு செய்கிறது…',
+                        err_no_image: 'பகுப்பாய்வு செய்வதற்கு முன் பயிர் படத்தை பதிவேற்றவும்.',
+                        err_bad_type: 'JPG, PNG, JPEG அல்லது WEBP படத்தை பதிவேற்றவும்.',
+                        err_too_large: '10 MB க்கும் குறைவான படத்தை பதிவேற்றவும்.',
+                        err_select_crop: 'பகுப்பாய்வு செய்வதற்கு முன் ஒரு பயிரைத் தேர்ந்தெடுக்கவும்.',
+                        analyzing_heading: 'உங்கள் பயிரை பகுப்பாய்வு செய்கிறது...',
+                        stage_received: 'படம் பெறப்பட்டது', stage_color: 'இலை நிறத்தை பரிசோதிக்கிறது', stage_patterns: 'தெரியும் அறிகுறிகளை கண்டறிகிறது',
+                        stage_comparing: 'பயிர் அறிகுறிகளை ஒப்பிடுகிறது', stage_recommendations: 'பரிந்துரைகளை தயார் செய்கிறது',
+                        report_heading: 'பயிர் ஆரோக்கிய அறிக்கை', possible_issue: 'சாத்தியமான பிரச்சனை', confidence_label: 'நம்பகத்தன்மை',
+                        health_score_label: 'ஆரோக்கிய மதிப்பெண்', status_label: 'நிலை',
+                        status_healthy: 'ஆரோக்கியமாக உள்ளது', status_monitor: 'நெருக்கமாக கண்காணிக்கவும்', status_attention: 'கவனம் தேவை',
+                        toggle_original: 'மூலம்', toggle_detection: 'AI கண்டறிதல்',
+                        ai_disclaimer: 'இது AI அடிப்படையிலான பரிசோதனை முடிவு, சிகிச்சைக்கு முன் உள்ளூர் வேளாண் நிபுணரிடம் உறுதிப்படுத்த வேண்டும்.',
+                        what_ai_detected: 'AI கண்டறிந்தது என்ன',
+                        recommended_steps: 'பரிந்துரைக்கப்படும் அடுத்த நடவடிக்கைகள்',
+                        step1: 'ஒத்த அறிகுறிகளுக்கு அருகிலுள்ள செடிகளை பரிசோதிக்கவும்.',
+                        step2: 'தேவைப்படும் இடத்தில் கடுமையாக பாதிக்கப்பட்ட பகுதிகளை அகற்றவும்.',
+                        step3: 'இலைகள் நீண்ட நேரம் ஈரமாக இருப்பதை தவிர்க்கவும்.',
+                        step4: 'சில நாட்களுக்குப் பிறகு பயிரை மீண்டும் கண்காணிக்கவும்.',
+                        step5: 'ஏதேனும் இரசாயன சிகிச்சையை பயன்படுத்தும் முன் உள்ளூர் வேளாண் நிபுணரை அணுகவும்.',
+                        important_label: 'முக்கியம்',
+                        important_text: 'இந்த AI முடிவை மட்டும் அடிப்படையாக கொண்டு பூச்சிக்கொல்லி அல்லது உரங்களை பயன்படுத்த வேண்டாம். பிரச்சனையை உறுதிப்படுத்தி, உள்ளூரில் அங்கீகரிக்கப்பட்ட வேளாண் வழிகாட்டுதலைப் பின்பற்றவும்.',
+                        weather_insight: 'வானிலை நுண்ணறிவு', current_conditions: 'தற்போதைய நிலைமைகள்',
+                        weather_insight_text: 'அதிக ஈரப்பதம் மற்றும் வரவிருக்கும் மழை சில இலை நோய்களுக்கு ஏற்ற சூழலை உருவாக்கலாம். பாதிக்கப்பட்ட செடிகளை நெருக்கமாக கண்காணித்து, தேவையற்ற இலை ஈரத்தை தவிர்க்கவும்.',
+                        risk_level: 'அபாய நிலை', risk_low: 'குறைவு', risk_moderate: 'நடுத்தரம்', risk_high: 'அதிகம்', view_weather: 'வானிலையைப் பார்க்கவும்',
+                        btn_save_report: 'அறிக்கையை சேமிக்கவும்', btn_scan_another: 'மற்றொரு இலையை ஸ்கேன் செய்யவும்', btn_add_to_crops: 'என் பயிர்களில் சேர்க்கவும்',
+                        btn_share_report: 'அறிக்கையை பகிரவும்', btn_back_dashboard: 'முகப்புக்குத் திரும்பு',
+                        toast_report_saved: 'பயிர் ஆரோக்கிய அறிக்கை வெற்றிகரமாக சேமிக்கப்பட்டது.',
+                        toast_crop_added: 'பயிர் வெற்றிகரமாக சேர்க்கப்பட்டது.', toast_scan_deleted: 'ஸ்கேன் நீக்கப்பட்டது.',
+                        toast_profile_updated: 'சுயவிவரம் புதுப்பிக்கப்பட்டது.', toast_language_changed: 'மொழி மாற்றப்பட்டது.',
+                        my_crops_heading: 'என் பயிர்கள்', add_new_crop: '+ புதிய பயிர் சேர்க்கவும்',
+                        field_label: 'வயல்', planted_label: 'நடப்பட்ட தேதி', health_label: 'ஆரோக்கியம்', last_scan_label: 'கடைசி ஸ்கேன்', scans_label: 'ஸ்கேன்கள்',
+                        view_crop: 'பயிரைப் பார்க்கவும்', scan_again: 'மீண்டும் ஸ்கேன் செய்யவும்',
+                        no_crops_msg: 'நீங்கள் இன்னும் எந்த பயிரையும் சேர்க்கவில்லை.', add_first_crop: 'உங்கள் முதல் பயிரை சேர்க்கவும்',
+                        add_crop_heading: 'புதிய பயிர் சேர்க்கவும்', crop_name_label: 'பயிர் பெயர்', field_name_label: 'வயல் பெயர்',
+                        planting_date_label: 'நடவு தேதி', area_label: 'பரப்பளவு', area_placeholder: 'எ.கா. 2 ஏக்கர்',
+                        add_crop_btn: 'பயிரை சேர்க்கவும்', cancel: 'ரத்து செய்',
+                        crop_health_trend: 'பயிர் ஆரோக்கிய போக்கு', recent_scans: 'சமீபத்திய ஸ்கேன்கள்', view_report: 'அறிக்கையைப் பார்க்கவும்',
+                        crop_journey: 'பயிர் ஆரோக்கிய பயணம்', crop_added: 'பயிர் சேர்க்கப்பட்டது', first_scan: 'ஸ்கேன்', issue_detected: 'சாத்தியமான பிரச்சனை கண்டறியப்பட்டது',
+                        weather_heading: 'உங்கள் பண்ணைக்கான வானிலை', your_location: 'உங்கள் இடம்', change: 'மாற்று',
+                        seven_day: '7-நாள் முன்னறிவிப்பு', wind: 'காற்று', uv: 'UV',
+                        crop_alerts: 'பயிர் வானிலை எச்சரிக்கைகள்',
+                        rain_alert_t: 'மழை எச்சரிக்கை', rain_alert_d: 'அடுத்த 24 மணி நேரத்தில் மழை பெய்யும் என எதிர்பார்க்கப்படுகிறது.',
+                        humidity_alert_t: 'ஈரப்பத எச்சரிக்கை', humidity_alert_d: 'அதிக ஈரப்பதம் சில பயிர் நோய்களின் அபாயத்தை அதிகரிக்கலாம்.',
+                        heat_alert_t: 'வெப்ப எச்சரிக்கை', heat_alert_d: 'வெப்பநிலை உணர்திறன் கொண்ட பயிர்களுக்கு அழுத்தத்தை ஏற்படுத்தலாம்.',
+                        view_crop_recs: 'பயிர் பரிந்துரைகளைப் பார்க்கவும்',
+                        guide_heading: 'பயிர் வழிகாட்டி', guide_search: 'பயிர்கள் அல்லது நோய்களைத் தேடுங்கள்...',
+                        common_issues: 'பொதுவான பிரச்சனைகள்', basic_info: 'அடிப்படை தகவல்', common_diseases: 'பொதுவான நோய்கள்',
+                        common_pests: 'பொதுவான பூச்சிகள்', nutrient_def: 'ஊட்டச்சத்து குறைபாடு அறிகுறிகள்', prevention: 'தடுப்பு',
+                        seek_expert: 'எப்போது நிபுணரை அணுக வேண்டும்', seek_expert_text: 'அறிகுறிகள் விரைவாக பரவினால், செடியின் பெரும்பகுதியை பாதித்தால், அல்லது அடிப்படை பராமரிப்புக்குப் பிறகும் மேம்படவில்லை என்றால், உடனடியாக உள்ளூர் வேளாண் நிபுணரை அணுகவும்.',
+                        scan_this: 'ஸ்கேன் செய்யவும்', history_heading: 'ஸ்கேன் வரலாறு', all: 'அனைத்தும்',
+                        filter_crop: 'பயிர்', filter_status: 'நிலை', search_scans: 'ஸ்கேன்களைத் தேடுங்கள்...',
+                        delete: 'நீக்கு', confirm_delete_t: 'இந்த ஸ்கேனை நீக்கவா?', confirm_delete_d: 'இந்த செயலை மாற்ற முடியாது.',
+                        confirm: 'நீக்கு', empty_history: 'இதுவரை பயிர் ஸ்கேன்கள் இல்லை.',
+                        notifications_heading: 'அறிவிப்புகள்',
+                        notif_new_scan: 'புதிய ஸ்கேன் சேமிக்கப்பட்டது', notif_scan_saved_d: 'ஸ்கேன் வெற்றிகரமாக சேமிக்கப்பட்டது.',
+                        notif_rain: 'மழை எச்சரிக்கை', notif_rain_d: 'நாளை மழை பெய்யும் என எதிர்பார்க்கப்படுகிறது.',
+                        notif_reminder: 'பயிர் கண்காணிப்பு நினைவூட்டல்', notif_reminder_d: '5 நாட்களாக ஸ்கேன் செய்யப்படவில்லை.',
+                        notif_healthy: 'ஆரோக்கியமான பயிர்', notif_healthy_d: 'ஆரோக்கியம் நிலையாக உள்ளது.',
+                        no_notifications: 'இதுவரை அறிவிப்புகள் இல்லை.',
+                        profile_heading: 'சுயவிவரம்', name_label: 'பெயர்', phone_label: 'தொலைபேசி எண்', village_label: 'கிராமம் / நகரம்',
+                        district_label: 'மாவட்டம்', state_label: 'மாநிலம்', primary_lang_label: 'முதன்மை மொழி',
+                        preferred_crop_label: 'விருப்பமான பயிர்', edit_profile: 'சுயவிவரத்தைத் திருத்து', save_changes: 'மாற்றங்களை சேமி',
+                        language_settings: 'மொழி', notification_settings: 'அறிவிப்பு அமைப்புகள்', clear_demo_data: 'டெமோ தரவை அழி',
+                        clear_confirm_t: 'அனைத்து டெமோ தரவையும் அழிக்கவா?', clear_confirm_d: 'இது பயன்பாட்டை அதன் அசல் டெமோ நிலைக்கு மீட்டமைக்கும். இதை மாற்ற முடியாது.',
+                        settings_heading: 'அமைப்புகள்', notif_toggle: 'அறிவிப்புகள்', weather_alerts_toggle: 'வானிலை எச்சரிக்கைகள்',
+                        reminders_toggle: 'பயிர் கண்காணிப்பு நினைவூட்டல்கள்', data_section: 'தரவு', clear_scan_history: 'ஸ்கேன் வரலாற்றை அழி',
+                        appearance: 'தோற்றம்', appearance_note: 'தற்போது லைட் மோட் மட்டும் — டார்க் மோட் விரைவில் வரும்.',
+                        file_label: 'கோப்பு', size_label: 'அளவு',
+                        select_placeholder: 'பயிரைத் தேர்ந்தெடுக்கவும்', back: 'பின்செல்'
+                    }
+                };
+
+                /* ============================= STATE ============================= */
+
+                var state = null;
+                var pendingScan = null;
+                var analyzeProgress = 0;
+                var analyzeTimer = null;
+                var analyzeResultCrop = null;
+                var resultToggleMode = 'original';
+                var editingProfile = false;
+                var addCropForm = null;
+                var scanDraftDetailsOpen = false;
+                var historyFilters = { crop: 'all', status: 'all', q: '' };
+                var guideSearch = '';
+                var pendingProfileForm = null;
+
+                function todayISO(offsetDays) {
+                    var d = new Date();
+                    d.setDate(d.getDate() + (offsetDays || 0));
+                    return d.toISOString().slice(0, 10);
+                }
+
+                function defaultState() {
+                    var t0 = todayISO(0), tM1 = todayISO(-1), tM3 = todayISO(-3), tM5 = todayISO(-5), tM7 = todayISO(-7);
+                    var crops = [
+                        { id: 'c-tomato', cropId: 'tomato', field: 'North Field', planted: '2026-08-12', area: '1.5 acres', health: 82, status: 'monitor', lastScan: t0, scans: 3 },
+                        { id: 'c-paddy', cropId: 'paddy', field: 'East Field', planted: '2026-07-20', area: '3 acres', health: 94, status: 'healthy', lastScan: tM3, scans: 2 },
+                        { id: 'c-chilli', cropId: 'chilli', field: 'South Field', planted: '2026-08-25', area: '1 acre', health: 76, status: 'attention', lastScan: tM1, scans: 2 },
+                        { id: 'c-banana', cropId: 'banana', field: 'West Field', planted: '2026-06-10', area: '2 acres', health: 91, status: 'healthy', lastScan: tM7, scans: 1 }
+                    ];
+                    var scans = [
+                        { id: 's1', cropRef: 'c-tomato', cropId: 'tomato', date: tM5, health: 88, issueEn: 'No major issue detected', issueTa: 'குறிப்பிடத்தக்க பிரச்சனை இல்லை', status: 'healthy', confidence: 90, image: null, risk: 'low' },
+                        { id: 's2', cropRef: 'c-tomato', cropId: 'tomato', date: tM3, health: 86, issueEn: 'Possible Early Blight', issueTa: 'ஆரம்பகால இலைக் கருகல் இருக்கலாம்', status: 'monitor', confidence: 80, image: null, risk: 'moderate' },
+                        { id: 's3', cropRef: 'c-tomato', cropId: 'tomato', date: t0, health: 82, issueEn: 'Possible Early Blight', issueTa: 'ஆரம்பகால இலைக் கருகல் இருக்கலாம்', status: 'monitor', confidence: 87, image: null, risk: 'moderate' },
+                        { id: 's4', cropRef: 'c-paddy', cropId: 'paddy', date: tM3, health: 94, issueEn: 'No major issue detected', issueTa: 'குறிப்பிடத்தக்க பிரச்சனை இல்லை', status: 'healthy', confidence: 93, image: null, risk: 'low' },
+                        { id: 's5', cropRef: 'c-paddy', cropId: 'paddy', date: tM7, health: 92, issueEn: 'No major issue detected', issueTa: 'குறிப்பிடத்தக்க பிரச்சனை இல்லை', status: 'healthy', confidence: 91, image: null, risk: 'low' },
+                        { id: 's6', cropRef: 'c-chilli', cropId: 'chilli', date: tM1, health: 76, issueEn: 'Possible Leaf Curl / Pest Stress', issueTa: 'இலை சுருள் / பூச்சி தாக்கம் இருக்கலாம்', status: 'attention', confidence: 81, image: null, risk: 'high' },
+                        { id: 's7', cropRef: 'c-chilli', cropId: 'chilli', date: tM7, health: 80, issueEn: 'Possible Leaf Curl', issueTa: 'இலை சுருள் இருக்கலாம்', status: 'monitor', confidence: 75, image: null, risk: 'moderate' },
+                        { id: 's8', cropRef: 'c-banana', cropId: 'banana', date: tM7, health: 91, issueEn: 'No major issue detected', issueTa: 'குறிப்பிடத்தக்க பிரச்சனை இல்லை', status: 'healthy', confidence: 90, image: null, risk: 'low' }
+                    ];
+                    var notifications = [
+                        { id: 'n1', type: 'reminder', cropId: 'chilli', date: t0, read: false },
+                        { id: 'n2', type: 'rain', date: t0, read: false },
+                        { id: 'n3', type: 'healthy', cropId: 'paddy', date: tM1, read: true },
+                        { id: 'n4', type: 'scan_saved', cropId: 'tomato', date: t0, read: true }
+                    ];
+                    return {
+                        onboarded: false, language: 'en',
+                        profile: { name: 'Ravi Kumar', phone: '98765 43210', village: 'Coimbatore', district: 'Coimbatore', state: 'Tamil Nadu', preferredCrop: 'tomato' },
+                        crops: crops, scans: scans, notifications: notifications,
+                        settings: { notifications: true, weatherAlerts: true, reminders: true }
+                    };
+                }
+
+                function loadState() {
+                    try {
+                        var raw = localStorage.getItem(STORAGE_KEY);
+                        if (raw) { var parsed = JSON.parse(raw); if (parsed && parsed.profile) return parsed; }
+                    } catch (e) { }
+                    return defaultState();
+                }
+                function saveState() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { } }
+
+                state = loadState();
+
+                /* ============================= HELPERS ============================= */
+
+                function t(key) { var d = T[state.language] || T.en; return d[key] !== undefined ? d[key] : (T.en[key] || key); }
+                function esc(str) { if (str === undefined || str === null) return ''; return String(str).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+                function uid() { return 'id' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+                function fmtDate(iso) {
+                    if (!iso) return '';
+                    var d = new Date(iso + 'T00:00:00');
+                    if (isNaN(d.getTime())) return iso;
+                    var months = state.language === 'ta'
+                        ? ['ஜன', 'பிப்', 'மார்', 'ஏப்', 'மே', 'ஜூன்', 'ஜூலை', 'ஆக', 'செப்', 'அக்', 'நவ', 'டிச']
+                        : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+                }
+                function daysAgo(iso) {
+                    var d = new Date(iso + 'T00:00:00');
+                    var now = new Date(); now.setHours(0, 0, 0, 0);
+                    return Math.round((now - d) / 86400000);
+                }
+                function relativeDate(iso) {
+                    var n = daysAgo(iso);
+                    if (n <= 0) return state.language === 'ta' ? 'இன்று' : 'Today';
+                    if (n === 1) return state.language === 'ta' ? 'நேற்று' : 'Yesterday';
+                    return (state.language === 'ta' ? (n + ' நாட்களுக்கு முன்') : (n + ' days ago'));
+                }
+                function statusLabel(status) {
+                    if (status === 'healthy') return t('status_healthy');
+                    if (status === 'monitor') return t('status_monitor');
+                    return t('status_attention');
+                }
+                function statusColor(status) {
+                    if (status === 'healthy') return { bg: 'bg-leaf-100', text: 'text-leaf-700', dot: 'bg-leaf-500', emoji: '✅' };
+                    if (status === 'monitor') return { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500', emoji: '⚠️' };
+                    return { bg: 'bg-orange-50', text: 'text-clay-700', dot: 'bg-clay-600', emoji: '⚠️' };
+                }
+                function riskLabel(risk) {
+                    if (risk === 'low') return t('risk_low');
+                    if (risk === 'high') return t('risk_high');
+                    return t('risk_moderate');
+                }
+                function riskPct(risk) { return risk === 'low' ? 18 : (risk === 'high' ? 85 : 52); }
+
+                function crop(id) { return state.crops.find(function (c) { return c.id === id; }); }
+                function scansForCrop(cropRecId) { return state.scans.filter(function (s) { return s.cropRef === cropRecId; }).sort(function (a, b) { return a.date.localeCompare(b.date); }); }
+
+                function toast(msg, kind) {
+                    var root = document.getElementById('toast-root');
+                    var el = document.createElement('div');
+                    el.className = 'toast pointer-events-auto px-4 py-3 rounded-2xl shadow-pop text-sm font-medium max-w-xs text-center ' +
+                        (kind === 'warn' ? 'bg-amber-500 text-white' : 'bg-leaf-800 text-white');
+                    el.textContent = msg;
+                    root.appendChild(el);
+                    setTimeout(function () {
+                        el.style.transition = 'opacity .3s ease';
+                        el.style.opacity = '0';
+                        setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 300);
+                    }, 2400);
+                }
+
+                var confirmModalResolve = null;
+                function showConfirm(title, desc, confirmLabel) {
+                    return new Promise(function (resolve) {
+                        confirmModalResolve = resolve;
+                        var root = document.getElementById('modal-root');
+                        root.innerHTML =
+                            '<div class="fixed inset-0 z-[300] flex items-center justify-center bg-leaf-900/40 p-4" id="confirm-backdrop">' +
+                            '<div class="bg-white rounded-3xl shadow-pop max-w-sm w-full p-6 enter">' +
+                            '<h3 class="font-display text-xl font-bold text-leaf-900 mb-2">' + esc(title) + '</h3>' +
+                            '<p class="text-sm text-leaf-900/70 mb-6">' + esc(desc) + '</p>' +
+                            '<div class="flex gap-3">' +
+                            '<button id="confirm-cancel" class="leaf-btn flex-1 py-3 rounded-xl bg-sand-100 font-semibold text-leaf-800">' + esc(t('cancel')) + '</button>' +
+                            '<button id="confirm-ok" class="leaf-btn flex-1 py-3 rounded-xl bg-clay-600 text-white font-semibold">' + esc(confirmLabel || t('confirm')) + '</button>' +
+                            '</div>' +
+                            '</div>' +
+                            '</div>';
+                        document.getElementById('confirm-cancel').onclick = function () { closeConfirm(false); };
+                        document.getElementById('confirm-ok').onclick = function () { closeConfirm(true); };
+                        document.getElementById('confirm-backdrop').onclick = function (e) { if (e.target.id === 'confirm-backdrop') closeConfirm(false); };
+                    });
+                }
+                function closeConfirm(val) {
+                    document.getElementById('modal-root').innerHTML = '';
+                    if (confirmModalResolve) { confirmModalResolve(val); confirmModalResolve = null; }
+                }
+
+                /* ============================= ROUTER ============================= */
+
+                function parseHash() {
+                    var raw = location.hash.slice(1) || '/';
+                    var qIndex = raw.indexOf('?');
+                    var path = qIndex >= 0 ? raw.slice(0, qIndex) : raw;
+                    var qs = qIndex >= 0 ? raw.slice(qIndex + 1) : '';
+                    var query = {};
+                    qs.split('&').forEach(function (pair) {
+                        if (!pair) return;
+                        var kv = pair.split('=');
+                        query[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1] || '');
+                    });
+                    var segs = path.split('/').filter(Boolean);
+                    return { path: path, segs: segs, query: query };
+                }
+
+                function navigate(hash) { location.hash = hash; }
+
+                function go(hash) { navigate(hash); }
+
+                window.addEventListener('hashchange', function () { window.scrollTo(0, 0); rerender(); });
+                window.addEventListener('load', function () {
+                    if (!location.hash) location.hash = '#/';
+                    rerender();
+                });
+
+                /* ============================= APP SHELL ============================= */
+
+                function iconHome(active) { return '<span class="text-xl">🏠</span>'; }
+
+                var NAV_ITEMS = [
+                    { key: 'home', hash: '#/home', icon: '🏠', labelKey: 'nav_home' },
+                    { key: 'scan', hash: '#/scan', icon: '📸', labelKey: 'nav_scan' },
+                    { key: 'crops', hash: '#/crops', icon: '🌱', labelKey: 'nav_crops' },
+                    { key: 'weather', hash: '#/weather', icon: '🌦️', labelKey: 'nav_weather' },
+                    { key: 'guide', hash: '#/guide', icon: '📚', labelKey: 'nav_guide' },
+                    { key: 'history', hash: '#/history', icon: '🕒', labelKey: 'nav_history' },
+                    { key: 'profile', hash: '#/profile', icon: '👤', labelKey: 'nav_profile' }
+                ];
+                var MOBILE_NAV = ['home', 'scan', 'crops', 'weather', 'profile'];
+
+                var drawerOpen = false;
+
+                function currentSection(route) {
+                    if (route.path.indexOf('/home') === 0 || route.path === '/') return 'home';
+                    if (route.path.indexOf('/scan') === 0) return 'scan';
+                    if (route.path.indexOf('/crops') === 0) return 'crops';
+                    if (route.path.indexOf('/weather') === 0) return 'weather';
+                    if (route.path.indexOf('/guide') === 0) return 'guide';
+                    if (route.path.indexOf('/history') === 0) return 'history';
+                    if (route.path.indexOf('/profile') === 0) return 'profile';
+                    if (route.path.indexOf('/settings') === 0) return 'settings';
+                    if (route.path.indexOf('/notifications') === 0) return 'notifications';
+                    return '';
+                }
+
+                function unreadCount() { return state.notifications.filter(function (n) { return !n.read; }).length; }
+
+                function renderShell(route, innerHtml, opts) {
+                    opts = opts || {};
+                    var section = currentSection(route);
+                    var showChrome = opts.chrome !== false;
+
+                    var header = !showChrome ? '' :
+                        '<header class="sticky top-0 z-40 bg-sand-50/95 backdrop-blur border-b border-sand-200 safe-top">' +
+                        '<div class="max-w-6xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between gap-3">' +
+                        '<a href="#/home" class="flex items-center gap-2 shrink-0">' +
+                        '<span class="text-2xl">🌾</span>' +
+                        '<span class="font-display font-bold text-leaf-800 text-lg leading-tight hidden sm:inline">' + esc(t('brand_name')) + '</span>' +
+                        '</a>' +
+                        '<nav class="desktop-only flex items-center gap-1 flex-1 justify-center">' +
+                        NAV_ITEMS.slice(0, 7).map(function (item) {
+                            var isActive = item.key === section;
+                            return '<a href="' + item.hash + '" class="px-3 py-2 rounded-xl text-sm font-semibold transition-colors ' +
+                                (isActive ? 'bg-leaf-700 text-white' : 'text-leaf-800 hover:bg-leaf-100') + '">' + esc(t(item.labelKey)) + '</a>';
+                        }).join('') +
+                        '</nav>' +
+                        '<div class="flex items-center gap-2 shrink-0">' +
+                        '<button id="lang-toggle" aria-label="Switch language / மொழியை மாற்று" class="lang-toggle-btn text-xs font-bold px-3 py-2 rounded-full bg-white border border-leaf-200 text-leaf-800 shadow-soft">' +
+                        '<span class="' + (state.language === 'en' ? 'text-leaf-800' : 'text-leaf-400') + '">EN</span>' +
+                        '<span class="text-leaf-300 mx-1">|</span>' +
+                        '<span class="' + (state.language === 'ta' ? 'text-leaf-800' : 'text-leaf-400') + '">தமிழ்</span>' +
+                        '</button>' +
+                        '<a href="#/notifications" aria-label="' + esc(t('nav_notifications')) + (unreadCount() > 0 ? ' (' + unreadCount() + ')' : '') + '" class="desktop-only relative w-10 h-10 rounded-full bg-white border border-leaf-200 shadow-soft flex items-center justify-center text-lg" title="' + esc(t('nav_notifications')) + '">🔔' +
+                        (unreadCount() > 0 ? '<span class="absolute -top-1 -right-1 bg-clay-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">' + unreadCount() + '</span>' : '') +
+                        '</a>' +
+                        '<a href="#/profile" aria-label="' + esc(t('nav_profile')) + '" class="desktop-only w-10 h-10 rounded-full bg-leaf-700 text-white shadow-soft flex items-center justify-center text-lg">👤</a>' +
+                        '<button id="hamburger-btn" aria-label="' + (state.language === 'ta' ? 'மெனுவைத் திற' : 'Open menu') + '" class="mobile-only w-10 h-10 rounded-full bg-white border border-leaf-200 shadow-soft flex items-center justify-center text-lg">☰</button>' +
+                        '</div>' +
+                        '</div>' +
+                        '</header>';
+
+                    var drawer = !showChrome ? '' :
+                        '<div id="drawer-backdrop" class="' + (drawerOpen ? '' : 'hidden') + ' fixed inset-0 bg-leaf-900/40 z-50 mobile-only"></div>' +
+                        '<div id="drawer" class="' + (drawerOpen ? '' : 'translate-x-full') + ' fixed top-0 right-0 h-full w-72 max-w-[85vw] bg-white z-50 shadow-pop transition-transform duration-200 mobile-only safe-top flex flex-col">' +
+                        '<div class="flex items-center justify-between p-4 border-b border-sand-200">' +
+                        '<span class="font-display font-bold text-leaf-800">' + esc(t('brand_name')) + '</span>' +
+                        '<button id="drawer-close" aria-label="' + (state.language === 'ta' ? 'மூடு' : 'Close menu') + '" class="w-9 h-9 rounded-full bg-sand-100 flex items-center justify-center">✕</button>' +
+                        '</div>' +
+                        '<div class="p-3 flex flex-col gap-1 overflow-y-auto">' +
+                        ['guide', 'history'].map(function (k) {
+                            var item = NAV_ITEMS.find(function (i) { return i.key === k; });
+                            return '<a href="' + item.hash + '" class="px-4 py-3 rounded-xl font-semibold text-leaf-800 hover:bg-leaf-50 flex items-center gap-3"><span class="text-xl">' + item.icon + '</span>' + esc(t(item.labelKey)) + '</a>';
+                        }).join('') +
+                        '<a href="#/notifications" class="px-4 py-3 rounded-xl font-semibold text-leaf-800 hover:bg-leaf-50 flex items-center gap-3"><span class="text-xl">🔔</span>' + esc(t('nav_notifications')) +
+                        (unreadCount() > 0 ? ' <span class="ml-auto bg-clay-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">' + unreadCount() + '</span>' : '') +
+                        '</a>' +
+                        '<a href="#/settings" class="px-4 py-3 rounded-xl font-semibold text-leaf-800 hover:bg-leaf-50 flex items-center gap-3"><span class="text-xl">⚙️</span>' + esc(t('nav_settings')) + '</a>' +
+                        '<div class="h-px bg-sand-200 my-2"></div>' +
+                        '<button id="drawer-lang" class="px-4 py-3 rounded-xl font-semibold text-leaf-800 hover:bg-leaf-50 flex items-center gap-3 text-left"><span class="text-xl">🌐</span>EN | தமிழ்</button>' +
+                        '</div>' +
+                        '</div>';
+
+                    var bottomNav = !showChrome ? '' :
+                        '<nav class="mobile-only fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-sand-200 safe-bottom">' +
+                        '<div class="grid grid-cols-5">' +
+                        MOBILE_NAV.map(function (key) {
+                            var item = NAV_ITEMS.find(function (i) { return i.key === key; });
+                            var isActive = item.key === section;
+                            var isScan = key === 'scan';
+                            return '<a href="' + item.hash + '" class="flex flex-col items-center justify-center py-2 gap-0.5 ' + (isActive ? 'text-leaf-700' : 'text-leaf-900/40') + '">' +
+                                (isScan ?
+                                    '<span class="w-11 h-11 -mt-5 rounded-full bg-leaf-700 text-white flex items-center justify-center text-xl shadow-pop">' + item.icon + '</span>'
+                                    : '<span class="text-xl">' + item.icon + '</span>') +
+                                '<span class="text-[10px] font-semibold">' + esc(t(item.labelKey).split(' ')[0]) + '</span>' +
+                                '</a>';
+                        }).join('') +
+                        '</div>' +
+                        '</nav>';
+
+                    var demoBadge = !showChrome ? '' :
+                        '<div class="fixed z-30 bottom-20 md:bottom-4 right-3 md:right-4">' +
+                        '<span title="' + esc(t('demo_mode_tip')) + '" class="text-[11px] font-semibold bg-white/90 backdrop-blur border border-leaf-200 text-leaf-700 px-3 py-1.5 rounded-full shadow-soft cursor-help">🧪 ' + esc(t('demo_mode')) + '</span>' +
+                        '</div>';
+
+                    return header + drawer +
+                        '<main id="main-content" class="flex-1 ' + (showChrome ? 'pb-24 md:pb-10' : '') + '">' + innerHtml + '</main>' +
+                        (showChrome ? demoBadge : '') + bottomNav;
+                }
+
+                /* ============================= VIEWS ============================= */
+
+                function viewWelcome() {
+                    return (
+                        '<div class="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-gradient-to-b from-leaf-50 to-sand-50 safe-top safe-bottom">' +
+                        '<div class="enter">' +
+                        '<div class="w-24 h-24 rounded-3xl bg-white shadow-pop flex items-center justify-center text-5xl mx-auto mb-6 pulse-ring">🌾</div>' +
+                        '<h1 class="font-display text-3xl font-extrabold text-leaf-900 mb-2">' + esc(t('brand_name')) + '</h1>' +
+                        '<p class="text-leaf-700/80 mb-10 max-w-xs mx-auto">' + esc(t('tagline')) + '</p>' +
+                        '<div class="flex flex-col gap-3 w-72 max-w-full mx-auto">' +
+                        '<button id="btn-get-started" class="leaf-btn bg-leaf-700 text-white font-semibold py-4 rounded-2xl shadow-pop">' + esc(t('welcome_get_started')) + '</button>' +
+                        '<button id="btn-continue-demo" class="leaf-btn bg-white border-2 border-leaf-200 text-leaf-800 font-semibold py-4 rounded-2xl">' + esc(t('welcome_continue_demo')) + '</button>' +
+                        '</div>' +
+                        '<button id="welcome-lang" class="mt-8 text-xs font-bold text-leaf-600 underline">EN | தமிழ்</button>' +
+                        '</div>' +
+                        '</div>');
+                }
+
+                var onboardStep = 0;
+                function viewOnboarding() {
+                    var screens = [
+                        { emoji: '📸', t: t('onb1_t'), d: t('onb1_d') },
+                        { emoji: '👁️', t: t('onb2_t'), d: t('onb2_d') },
+                        { emoji: '📈', t: t('onb3_t'), d: t('onb3_d') }
+                    ];
+                    var s = screens[onboardStep];
+                    return (
+                        '<div class="min-h-screen flex flex-col px-6 py-10 safe-top safe-bottom bg-sand-50">' +
+                        '<div class="flex justify-end"><button id="onb-skip" class="text-sm font-semibold text-leaf-600">' + esc(t('btn_skip')) + '</button></div>' +
+                        '<div class="flex-1 flex flex-col items-center justify-center text-center enter" key="' + onboardStep + '">' +
+                        '<div class="w-28 h-28 rounded-full bg-leaf-100 flex items-center justify-center text-6xl mb-8">' + s.emoji + '</div>' +
+                        '<h2 class="font-display text-2xl font-bold text-leaf-900 mb-3">' + esc(s.t) + '</h2>' +
+                        '<p class="text-leaf-700/80 max-w-xs">' + esc(s.d) + '</p>' +
+                        '</div>' +
+                        '<div class="flex items-center justify-center gap-2 mb-8">' +
+                        screens.map(function (_, i) { return '<span class="h-2 rounded-full transition-all ' + (i === onboardStep ? 'w-6 bg-leaf-700' : 'w-2 bg-leaf-200') + '"></span>'; }).join('') +
+                        '</div>' +
+                        '<div class="flex gap-3">' +
+                        (onboardStep > 0 ? '<button id="onb-back" class="leaf-btn flex-1 py-4 rounded-2xl bg-white border-2 border-leaf-200 text-leaf-800 font-semibold">' + esc(t('btn_back')) + '</button>' : '') +
+                        '<button id="onb-next" class="leaf-btn flex-1 py-4 rounded-2xl bg-leaf-700 text-white font-semibold">' + esc(onboardStep < 2 ? t('btn_next') : t('btn_start')) + '</button>' +
+                        '</div>' +
+                        '</div>');
+                }
+
+                function sectionTitle(title, sub) {
+                    return '<div class="mb-5"><h1 class="font-display text-2xl md:text-3xl font-extrabold text-leaf-900">' + esc(title) + '</h1>' +
+                        (sub ? '<p class="text-leaf-700/70 text-sm mt-1 max-w-lg">' + esc(sub) + '</p>' : '') + '</div>';
+                }
+
+                function viewHome() {
+                    var totalCrops = state.crops.length;
+                    var totalScans = state.scans.length;
+                    var healthyCrops = state.crops.filter(function (c) { return c.status === 'healthy'; }).length;
+                    var monitorCrops = state.crops.filter(function (c) { return c.status !== 'healthy'; }).length;
+
+                    var recent = state.crops.slice().sort(function (a, b) { return b.lastScan.localeCompare(a.lastScan); }).slice(0, 3);
+
+                    var stats = [
+                        { icon: '🌱', label: t('stat_crops'), value: totalCrops },
+                        { icon: '🔬', label: t('stat_scans'), value: totalScans },
+                        { icon: '✅', label: t('stat_healthy'), value: healthyCrops },
+                        { icon: '⚠️', label: t('stat_monitor'), value: monitorCrops }
+                    ];
+
+                    var quick = [
+                        { icon: '📸', title: t('qa_scan_t'), desc: t('qa_scan_d'), hash: '#/scan' },
+                        { icon: '🌱', title: t('qa_add_t'), desc: t('qa_add_d'), hash: '#/crops/add' },
+                        { icon: '🌦️', title: t('qa_weather_t'), desc: t('qa_weather_d'), hash: '#/weather' },
+                        { icon: '📚', title: t('qa_guide_t'), desc: t('qa_guide_d'), hash: '#/guide' }
+                    ];
+
+                    var how = [
+                        { n: '01', t: t('how1_t'), d: t('how1_d') }, { n: '02', t: t('how2_t'), d: t('how2_d') },
+                        { n: '03', t: t('how3_t'), d: t('how3_d') }, { n: '04', t: t('how4_t'), d: t('how4_d') },
+                        { n: '05', t: t('how5_t'), d: t('how5_d') }
+                    ];
+
+                    var trust = [
+                        { icon: '🌱', t: t('trust1_t'), d: t('trust1_d') },
+                        { icon: '🗣️', t: t('trust2_t'), d: t('trust2_d') },
+                        { icon: '🎯', t: t('trust3_t'), d: t('trust3_d') }
+                    ];
+
+                    var html =
+                        '<div class="max-w-6xl mx-auto px-4 md:px-6 pt-6">' +
+                        '<div class="enter bg-gradient-to-br from-leaf-700 to-leaf-800 rounded-3xl px-6 py-8 md:px-10 md:py-12 text-white shadow-pop relative overflow-hidden mb-6">' +
+                        '<div class="absolute -right-8 -bottom-8 text-[140px] opacity-10 select-none pointer-events-none">🌿</div>' +
+                        '<h1 class="font-display text-2xl md:text-4xl font-extrabold mb-3 max-w-lg relative">' + esc(t('home_heading')) + '</h1>' +
+                        '<p class="text-leaf-50/90 max-w-md mb-6 relative">' + esc(t('home_sub')) + '</p>' +
+                        '<div class="flex flex-wrap gap-3 relative">' +
+                        '<a href="#/scan" class="leaf-btn bg-white text-leaf-800 font-semibold px-5 py-3 rounded-2xl shadow-pop">📸 ' + esc(t('cta_scan')) + '</a>' +
+                        '<a href="#/crops" class="leaf-btn bg-leaf-900/30 border border-white/40 text-white font-semibold px-5 py-3 rounded-2xl">📊 ' + esc(t('cta_view_crops')) + '</a>' +
+                        '</div>' +
+                        '</div>' +
+
+                        '<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">' +
+                        stats.map(function (s) {
+                            return '<div class="card-hover bg-white rounded-2xl p-4 shadow-soft text-center">' +
+                                '<div class="text-2xl mb-1">' + s.icon + '</div>' +
+                                '<div class="font-display text-2xl font-extrabold text-leaf-800">' + s.value + '</div>' +
+                                '<div class="text-xs text-leaf-700/70 font-medium">' + esc(s.label) + '</div>' +
+                                '</div>';
+                        }).join('') +
+                        '</div>' +
+
+                        '<div class="mb-8">' +
+                        '<div class="flex items-center justify-between mb-3"><h2 class="font-display text-xl font-bold text-leaf-900">' + esc(t('recent_health')) + '</h2></div>' +
+                        '<div class="grid md:grid-cols-3 gap-3">' +
+                        recent.map(function (c) {
+                            var sc = statusColor(c.status);
+                            return '<div class="card-hover bg-white rounded-2xl p-4 shadow-soft">' +
+                                '<div class="flex items-center gap-3 mb-3">' +
+                                '<span class="text-3xl">' + cropIcon(c.cropId) + '</span>' +
+                                '<div><div class="font-display font-bold text-leaf-900">' + esc(cropName(c.cropId)) + '</div>' +
+                                '<div class="text-xs text-leaf-700/60">' + esc(relativeDate(c.lastScan)) + '</div></div>' +
+                                '</div>' +
+                                '<div class="flex items-center justify-between mb-3">' +
+                                '<span class="font-display text-2xl font-extrabold text-leaf-800">' + c.health + '%</span>' +
+                                '<span class="text-xs font-bold px-2.5 py-1 rounded-full ' + sc.bg + ' ' + sc.text + '">' + sc.emoji + ' ' + esc(statusLabel(c.status)) + '</span>' +
+                                '</div>' +
+                                '<a href="#/crops/' + c.id + '" class="leaf-btn block text-center bg-leaf-50 text-leaf-800 font-semibold py-2.5 rounded-xl text-sm">' + esc(t('view_details')) + '</a>' +
+                                '</div>';
+                        }).join('') +
+                        '</div>' +
+                        '</div>' +
+
+                        '<div class="mb-8">' +
+                        '<div class="card-hover bg-sand-100 rounded-2xl p-5 md:p-6 shadow-soft flex flex-col md:flex-row md:items-center gap-4">' +
+                        '<div class="flex-1">' +
+                        '<div class="text-sm font-bold text-leaf-700 mb-1">' + esc(t('weather_today')) + '</div>' +
+                        '<div class="flex items-center gap-3 mb-2">' +
+                        '<span class="font-display text-4xl font-extrabold text-leaf-900">' + CURRENT_WEATHER.temp + '°C</span>' +
+                        '<span class="text-leaf-700/80">☁️ ' + esc(state.language === 'ta' ? CURRENT_WEATHER.conditionTa : CURRENT_WEATHER.condition) + '</span>' +
+                        '</div>' +
+                        '<div class="text-sm text-leaf-700/70">' + esc(t('humidity')) + ': ' + CURRENT_WEATHER.humidity + '% · ' + esc(t('rain_chance')) + ': ' + CURRENT_WEATHER.rain + '%</div>' +
+                        '<div class="mt-3 flex items-start gap-2 bg-amber-50 text-amber-800 text-xs font-medium rounded-xl px-3 py-2 max-w-sm">⚠️ ' + esc(t('weather_warning')) + '</div>' +
+                        '</div>' +
+                        '<a href="#/weather" class="leaf-btn shrink-0 bg-leaf-700 text-white font-semibold px-5 py-3 rounded-xl text-center">' + esc(t('view_full_weather')) + '</a>' +
+                        '</div>' +
+                        '</div>' +
+
+                        '<div class="mb-10">' +
+                        '<h2 class="font-display text-xl font-bold text-leaf-900 mb-3">' + esc(t('quick_actions')) + '</h2>' +
+                        '<div class="grid grid-cols-2 md:grid-cols-4 gap-3">' +
+                        quick.map(function (q) {
+                            return '<a href="' + q.hash + '" class="card-hover bg-white rounded-2xl p-4 shadow-soft flex flex-col items-start gap-1">' +
+                                '<span class="text-2xl mb-1">' + q.icon + '</span>' +
+                                '<span class="font-display font-bold text-leaf-900 text-sm">' + esc(q.title) + '</span>' +
+                                '<span class="text-xs text-leaf-700/60">' + esc(q.desc) + '</span>' +
+                                '</a>';
+                        }).join('') +
+                        '</div>' +
+                        '</div>' +
+
+                        '<div class="mb-10">' +
+                        '<h2 class="font-display text-xl font-bold text-leaf-900 mb-4">' + esc(t('how_heading')) + '</h2>' +
+                        '<div class="grid md:grid-cols-5 gap-3">' +
+                        how.map(function (h) {
+                            return '<div class="bg-white rounded-2xl p-4 shadow-soft">' +
+                                '<div class="font-display text-leaf-300 text-2xl font-extrabold mb-1">' + h.n + '</div>' +
+                                '<div class="font-bold text-leaf-900 text-sm mb-1">' + esc(h.t) + '</div>' +
+                                '<div class="text-xs text-leaf-700/60">' + esc(h.d) + '</div>' +
+                                '</div>';
+                        }).join('') +
+                        '</div>' +
+                        '</div>' +
+
+                        '<div class="mb-10">' +
+                        '<h2 class="font-display text-xl font-bold text-leaf-900 mb-4">' + esc(t('trust_heading')) + '</h2>' +
+                        '<div class="grid md:grid-cols-3 gap-3">' +
+                        trust.map(function (x) {
+                            return '<div class="bg-leaf-50 rounded-2xl p-5 text-center">' +
+                                '<div class="text-2xl mb-2">' + x.icon + '</div>' +
+                                '<div class="font-display font-bold text-leaf-900 mb-1">' + esc(x.t) + '</div>' +
+                                '<div class="text-xs text-leaf-700/70">' + esc(x.d) + '</div>' +
+                                '</div>';
+                        }).join('') +
+                        '</div>' +
+                        '</div>' +
+
+                        '<div class="mb-10 bg-sand-100 rounded-2xl p-5 text-xs text-leaf-700/70 leading-relaxed">' + esc(t('disclaimer')) + '</div>' +
+                        '</div>';
+                    return html;
+                }
+
+                /* ---------- SCAN ---------- */
+
+                function viewScan(query) {
+                    var d = pendingScan || {};
+                    var preselect = query && query.crop ? query.crop : (d.cropId || '');
+                    var img = d.imageData;
+                    return (
+                        '<div class="max-w-2xl mx-auto px-4 md:px-6 pt-6">' +
+                        sectionTitle(t('scan_heading'), t('scan_sub')) +
+
+                        (d.error ? '<div class="mb-4 bg-orange-50 text-clay-700 text-sm font-medium rounded-xl px-4 py-3 flex items-center gap-2">⚠️ ' + esc(d.error) + '</div>' : '') +
+
+                        (!img ?
+                            '<div class="bg-white rounded-3xl shadow-soft p-6 mb-5 text-center border-2 border-dashed border-leaf-200">' +
+                            '<div class="text-5xl mb-3">📷</div>' +
+                            '<p class="text-sm text-leaf-700/70 mb-5">' + esc(t('scan_sub')) + '</p>' +
+                            '<div class="flex flex-col sm:flex-row gap-3 justify-center">' +
+                            '<label class="leaf-btn cursor-pointer bg-leaf-700 text-white font-semibold px-5 py-3 rounded-2xl inline-flex items-center justify-center gap-2">' +
+                            '📷 ' + esc(t('take_photo')) +
+                            '<input type="file" accept="image/*" capture="environment" id="camera-input" class="hidden">' +
+                            '</label>' +
+                            '<label class="leaf-btn cursor-pointer bg-sand-100 text-leaf-800 font-semibold px-5 py-3 rounded-2xl inline-flex items-center justify-center gap-2">' +
+                            '🖼️ ' + esc(t('upload_gallery')) +
+                            '<input type="file" accept="image/*" id="gallery-input" class="hidden">' +
+                            '</label>' +
+                            '</div>' +
+                            '</div>'
+                            :
+                            '<div class="bg-white rounded-3xl shadow-soft p-4 mb-5">' +
+                            '<img src="' + img + '" class="w-full h-56 object-cover rounded-2xl mb-3" alt="crop leaf preview" />' +
+                            '<div class="flex items-center justify-between text-xs text-leaf-700/60 mb-3 px-1">' +
+                            '<span>' + esc(t('file_label')) + ': ' + esc(d.fileName || '') + '</span>' +
+                            '<span>' + esc(t('size_label')) + ': ' + (d.fileSizeKB || 0) + ' KB</span>' +
+                            '</div>' +
+                            '<div class="flex gap-3">' +
+                            '<button id="btn-remove-image" class="leaf-btn flex-1 py-2.5 rounded-xl bg-sand-100 text-leaf-800 font-semibold text-sm">' + esc(t('remove')) + '</button>' +
+                            '<label class="leaf-btn flex-1 py-2.5 rounded-xl bg-leaf-50 text-leaf-800 font-semibold text-sm text-center cursor-pointer">' + esc(t('replace')) +
+                            '<input type="file" accept="image/*" id="replace-input" class="hidden">' +
+                            '</label>' +
+                            '</div>' +
+                            '</div>'
+                        ) +
+
+                        '<div class="bg-white rounded-3xl shadow-soft p-5 mb-5">' +
+                        '<label class="block font-display font-bold text-leaf-900 mb-2">' + esc(t('what_crop')) + '</label>' +
+                        '<select id="crop-select" class="w-full border-2 border-leaf-100 rounded-xl px-4 py-3 font-medium text-leaf-900 bg-sand-50">' +
+                        '<option value="" ' + (!preselect ? 'selected' : '') + ' disabled>' + esc(t('select_placeholder')) + '</option>' +
+                        CROPS.map(function (c) { return '<option value="' + c.id + '" ' + (preselect === c.id ? 'selected' : '') + '>' + c.icon + ' ' + esc(state.language === 'ta' ? c.ta : c.en) + '</option>'; }).join('') +
+                        '<option value="unknown" ' + (preselect === 'unknown' ? 'selected' : '') + '>🤔 ' + esc(t('i_dont_know')) + '</option>' +
+                        '</select>' +
+                        '</div>' +
+
+                        '<div class="bg-white rounded-3xl shadow-soft mb-5 overflow-hidden">' +
+                        '<button id="toggle-details" class="w-full flex items-center justify-between px-5 py-4 font-display font-bold text-leaf-900">' +
+                        '<span>' + esc(t('add_more_details')) + '</span><span>' + (scanDraftDetailsOpen ? '▲' : '▼') + '</span>' +
+                        '</button>' +
+                        (scanDraftDetailsOpen ?
+                            '<div class="px-5 pb-5 flex flex-col gap-4 border-t border-sand-100 pt-4">' +
+                            '<div>' +
+                            '<label class="block text-sm font-semibold text-leaf-800 mb-1.5">' + esc(t('crop_age')) + '</label>' +
+                            '<select id="detail-age" class="w-full border-2 border-leaf-100 rounded-xl px-3 py-2.5 bg-sand-50 text-sm">' +
+                            '<option value="">—</option>' +
+                            '<option value="age1" ' + (d.age === 'age1' ? 'selected' : '') + '>' + esc(t('age_1')) + '</option>' +
+                            '<option value="age2" ' + (d.age === 'age2' ? 'selected' : '') + '>' + esc(t('age_2')) + '</option>' +
+                            '<option value="age3" ' + (d.age === 'age3' ? 'selected' : '') + '>' + esc(t('age_3')) + '</option>' +
+                            '<option value="age4" ' + (d.age === 'age4' ? 'selected' : '') + '>' + esc(t('age_4')) + '</option>' +
+                            '</select>' +
+                            '</div>' +
+                            '<div>' +
+                            '<label class="block text-sm font-semibold text-leaf-800 mb-1.5">' + esc(t('farm_location')) + '</label>' +
+                            '<input id="detail-location" type="text" value="' + esc(d.location || '') + '" class="w-full border-2 border-leaf-100 rounded-xl px-3 py-2.5 bg-sand-50 text-sm" />' +
+                            '</div>' +
+                            '<div>' +
+                            '<label class="block text-sm font-semibold text-leaf-800 mb-1.5">' + esc(t('last_watered')) + '</label>' +
+                            '<input id="detail-watered" type="date" value="' + esc(d.watered || '') + '" class="w-full border-2 border-leaf-100 rounded-xl px-3 py-2.5 bg-sand-50 text-sm" />' +
+                            '</div>' +
+                            '<div>' +
+                            '<label class="block text-sm font-semibold text-leaf-800 mb-1.5">' + esc(t('recent_rain')) + '</label>' +
+                            '<div class="flex gap-2">' +
+                            '<button data-rain="yes" class="rain-btn leaf-btn flex-1 py-2 rounded-xl font-semibold text-sm ' + (d.rain === 'yes' ? 'bg-leaf-700 text-white' : 'bg-sand-100 text-leaf-800') + '">' + esc(t('yes')) + '</button>' +
+                            '<button data-rain="no" class="rain-btn leaf-btn flex-1 py-2 rounded-xl font-semibold text-sm ' + (d.rain === 'no' ? 'bg-leaf-700 text-white' : 'bg-sand-100 text-leaf-800') + '">' + esc(t('no')) + '</button>' +
+                            '</div>' +
+                            '</div>' +
+                            '</div>' : '') +
+                        '</div>' +
+
+                        '<button id="btn-analyze" class="leaf-btn w-full py-4 rounded-2xl bg-leaf-700 text-white font-display font-bold text-lg shadow-pop mb-10">🤖 ' + esc(t('analyze_crop')) + '</button>' +
+                        '</div>');
+                }
+
+                function resizeImageFile(file, cb) {
+                    var reader = new FileReader();
+                    reader.onload = function (e) {
+                        var img = new Image();
+                        img.onload = function () {
+                            var maxW = 900;
+                            var scale = Math.min(1, maxW / img.width);
+                            var w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+                            var canvas = document.createElement('canvas');
+                            canvas.width = w; canvas.height = h;
+                            var ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, w, h);
+                            var dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+                            cb(dataUrl);
+                        };
+                        img.onerror = function () { cb(e.target.result); };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+
+                function handleImageFile(file) {
+                    if (!pendingScan) pendingScan = {};
+                    var validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+                    if (validTypes.indexOf(file.type) === -1) {
+                        pendingScan.error = t('err_bad_type'); rerender(); return;
+                    }
+                    if (file.size > 10 * 1024 * 1024) {
+                        pendingScan.error = t('err_too_large'); rerender(); return;
+                    }
+                    pendingScan.error = null;
+                    pendingScan.fileName = file.name;
+                    pendingScan.fileSizeKB = Math.round(file.size / 1024);
+                    resizeImageFile(file, function (dataUrl) {
+                        pendingScan.imageData = dataUrl;
+                        rerender();
+                    });
+                }
+
+                function viewAnalyzing() {
+                    var d = pendingScan || {};
+                    var pct = analyzeProgress;
+                    var stages = [
+                        { at: 15, key: 'stage_received' }, { at: 40, key: 'stage_color' },
+                        { at: 65, key: 'stage_patterns' }, { at: 88, key: 'stage_comparing' }, { at: 100, key: 'stage_recommendations' }
+                    ];
+                    return (
+                        '<div class="max-w-md mx-auto px-6 pt-10 text-center safe-bottom">' +
+                        '<h1 class="font-display text-2xl font-extrabold text-leaf-900 mb-8">' + esc(t('analyzing_heading')) + '</h1>' +
+                        '<div class="relative w-56 h-56 mx-auto mb-8 rounded-3xl overflow-hidden shadow-pop bg-leaf-900">' +
+                        (d.imageData ? '<img src="' + d.imageData + '" class="w-full h-full object-cover opacity-90" />' : '<div class="w-full h-full flex items-center justify-center text-6xl">🌿</div>') +
+                        '<div class="scan-line"></div>' +
+                        '<div class="absolute inset-0 bg-gradient-to-t from-leaf-900/50 to-transparent"></div>' +
+                        '</div>' +
+                        '<div class="mb-6">' +
+                        '<div class="font-display text-4xl font-extrabold text-leaf-800 mb-2">' + pct + '%</div>' +
+                        '<div class="w-full h-3 bg-leaf-100 rounded-full overflow-hidden">' +
+                        '<div class="h-full bg-leaf-600 transition-all duration-200" style="width:' + pct + '%"></div>' +
+                        '</div>' +
+                        '</div>' +
+                        '<div class="flex flex-col gap-2 text-left bg-white rounded-2xl shadow-soft p-4">' +
+                        stages.map(function (s) {
+                            var done = pct >= s.at;
+                            var active = !done && pct >= (s.at - 25);
+                            return '<div class="flex items-center gap-3 text-sm ' + (done ? 'text-leaf-800 font-semibold' : 'text-leaf-900/40') + '">' +
+                                '<span>' + (done ? '✅' : (active ? '🔄' : '○')) + '</span><span>' + esc(t(s.key)) + '</span>' +
+                                '</div>';
+                        }).join('') +
+                        '</div>' +
+                        '</div>');
+                }
+
+                function startAnalyzing() {
+                    analyzeProgress = 0;
+                    if (analyzeTimer) clearInterval(analyzeTimer);
+                    var duration = 2800 + Math.random() * 1200;
+                    var stepMs = 150;
+                    var steps = duration / stepMs;
+                    var inc = 100 / steps;
+                    analyzeTimer = setInterval(function () {
+                        analyzeProgress = Math.min(100, analyzeProgress + inc);
+                        if (analyzeProgress >= 100) {
+                            clearInterval(analyzeTimer);
+                            analyzeTimer = null;
+                            finishAnalysis();
+                        } else {
+                            rerenderPartial();
+                        }
+                    }, stepMs);
+                }
+
+                function rerenderPartial() {
+                    var route = parseHash();
+                    if (route.path.indexOf('/scan/analyzing') === 0) {
+                        document.getElementById('app').innerHTML = renderShell(route, viewAnalyzing());
+                    }
+                }
+
+                function finishAnalysis() {
+                    var d = pendingScan || {};
+                    var cid = d.cropId;
+                    if (cid === 'unknown' || !cid) {
+                        cid = CROPS[Math.floor(Math.random() * CROPS.length)].id;
+                    }
+                    analyzeResultCrop = cid;
+                    var mock = MOCK_RESULTS[cid] || MOCK_RESULTS._default;
+                    var healthJitter = Math.round((Math.random() * 6) - 3);
+                    var confJitter = Math.round((Math.random() * 6) - 3);
+                    var health = Math.max(40, Math.min(99, mock.health + healthJitter));
+                    var confidence = Math.max(60, Math.min(99, mock.confidence + confJitter));
+                    var status = health >= 88 ? 'healthy' : (health >= 70 ? 'monitor' : 'attention');
+                    pendingScan.result = {
+                        cropId: cid, issueEn: mock.issueEn, issueTa: mock.issueTa,
+                        confidence: confidence, health: health, status: status, risk: mock.risk,
+                        detected: mock.detected
+                    };
+                    resultToggleMode = 'original';
+                    navigate('#/scan/result/draft');
+                }
+
+                function viewScanResult(id, opts) {
+                    var isDraft = id === 'draft';
+                    var record, cropId, image, dateStr;
+                    var issueEn, issueTa, confidence, health, status, risk, detected;
+
+                    if (isDraft) {
+                        var d = pendingScan || {};
+                        if (!d.result) { return '<div class="max-w-md mx-auto px-6 pt-10 text-center text-leaf-700">…</div>'; }
+                        cropId = d.result.cropId; image = d.imageData; dateStr = todayISO(0);
+                        issueEn = d.result.issueEn; issueTa = d.result.issueTa; confidence = d.result.confidence;
+                        health = d.result.health; status = d.result.status; risk = d.result.risk; detected = d.result.detected;
+                    } else {
+                        record = state.scans.find(function (s) { return s.id === id; });
+                        if (!record) { return '<div class="max-w-md mx-auto px-6 pt-10 text-center text-leaf-700">Not found</div>'; }
+                        cropId = record.cropId; image = record.image; dateStr = record.date;
+                        issueEn = record.issueEn; issueTa = record.issueTa; confidence = record.confidence;
+                        health = record.health; status = record.status; risk = record.risk || 'moderate';
+                        detected = (MOCK_RESULTS[cropId] || MOCK_RESULTS._default).detected;
+                    }
+
+                    var sc = statusColor(status);
+                    var issue = state.language === 'ta' ? issueTa : issueEn;
+                    var alreadySaved = !isDraft;
+                    var alreadyTracked = state.crops.some(function (c) { return c.cropId === cropId; });
+
+                    var steps = [t('step1'), t('step2'), t('step3'), t('step4'), t('step5')];
+
+                    return (
+                        '<div class="max-w-2xl mx-auto px-4 md:px-6 pt-6 pb-10">' +
+                        sectionTitle(t('report_heading')) +
+
+                        '<div class="bg-white rounded-3xl shadow-soft p-4 mb-5">' +
+                        '<div class="relative w-full h-64 rounded-2xl overflow-hidden bg-leaf-900 mb-3">' +
+                        (image ? '<img src="' + image + '" alt="' + esc(cropName(cropId)) + ' leaf photo" class="w-full h-full object-cover" />' : '<div class="w-full h-full flex items-center justify-center text-6xl" role="img" aria-label="' + esc(cropName(cropId)) + '">' + cropIcon(cropId) + '</div>') +
+                        (resultToggleMode === 'detection' ? detected.map(function (m) {
+                            return '<span class="marker-dot" style="left:' + m.x + '%;top:' + m.y + '%;background:' + m.color + '"></span>';
+                        }).join('') : '') +
+                        '</div>' +
+                        '<div class="flex bg-sand-100 rounded-xl p-1">' +
+                        '<button data-toggle="original" class="flex-1 py-2 rounded-lg text-sm font-semibold ' + (resultToggleMode === 'original' ? 'bg-white shadow-soft text-leaf-800' : 'text-leaf-700/60') + '">' + esc(t('toggle_original')) + '</button>' +
+                        '<button data-toggle="detection" class="flex-1 py-2 rounded-lg text-sm font-semibold ' + (resultToggleMode === 'detection' ? 'bg-white shadow-soft text-leaf-800' : 'text-leaf-700/60') + '">' + esc(t('toggle_detection')) + '</button>' +
+                        '</div>' +
+                        '</div>' +
+
+                        '<div class="bg-white rounded-3xl shadow-soft p-5 mb-5">' +
+                        '<div class="flex items-center gap-2 mb-4"><span class="text-2xl">' + cropIcon(cropId) + '</span><span class="font-display font-bold text-lg text-leaf-900">' + esc(cropName(cropId)) + '</span>' +
+                        '<span class="ml-auto text-xs text-leaf-700/50 font-medium">' + esc(fmtDate(dateStr)) + '</span></div>' +
+                        '<div class="grid grid-cols-2 gap-3 mb-3">' +
+                        '<div class="bg-sand-50 rounded-2xl p-3"><div class="text-xs text-leaf-700/60 font-semibold mb-0.5">' + esc(t('possible_issue')) + '</div><div class="font-bold text-leaf-900 text-sm leading-snug">' + esc(issue) + '</div></div>' +
+                        '<div class="bg-sand-50 rounded-2xl p-3"><div class="text-xs text-leaf-700/60 font-semibold mb-0.5">' + esc(t('confidence_label')) + '</div><div class="font-display font-extrabold text-leaf-900 text-xl">' + confidence + '%</div></div>' +
+                        '<div class="bg-sand-50 rounded-2xl p-3"><div class="text-xs text-leaf-700/60 font-semibold mb-0.5">' + esc(t('health_score_label')) + '</div><div class="font-display font-extrabold text-leaf-900 text-xl">' + health + '/100</div></div>' +
+                        '<div class="rounded-2xl p-3 ' + sc.bg + '"><div class="text-xs font-semibold mb-0.5 ' + sc.text + '/70">' + esc(t('status_label')) + '</div><div class="font-bold text-sm ' + sc.text + '">' + sc.emoji + ' ' + esc(statusLabel(status)) + '</div></div>' +
+                        '</div>' +
+                        '<div class="text-xs text-leaf-700/60 bg-amber-50 text-amber-800 rounded-xl px-3 py-2.5 leading-relaxed">ℹ️ ' + esc(t('ai_disclaimer')) + '</div>' +
+                        '</div>' +
+
+                        '<div class="bg-white rounded-3xl shadow-soft p-5 mb-5">' +
+                        '<h3 class="font-display font-bold text-leaf-900 mb-3">👁️ ' + esc(t('what_ai_detected')) + '</h3>' +
+                        '<div class="flex flex-col gap-3">' +
+                        detected.map(function (m) {
+                            return '<div class="flex items-start gap-3">' +
+                                '<span class="w-3 h-3 rounded-full mt-1 shrink-0" style="background:' + m.color + '"></span>' +
+                                '<div><div class="font-semibold text-leaf-900 text-sm">' + esc(state.language === 'ta' ? m.ta : m.en) + '</div>' +
+                                '<div class="text-xs text-leaf-700/60">' + esc(state.language === 'ta' ? m.descTa : m.descEn) + '</div></div>' +
+                                '</div>';
+                        }).join('') +
+                        '</div>' +
+                        '</div>' +
+
+                        '<div class="bg-white rounded-3xl shadow-soft p-5 mb-5">' +
+                        '<h3 class="font-display font-bold text-leaf-900 mb-4">' + esc(t('recommended_steps')) + '</h3>' +
+                        '<div class="flex flex-col gap-4 mb-4">' +
+                        steps.map(function (s, i) {
+                            return '<div class="flex items-start gap-3">' +
+                                '<span class="font-display font-extrabold text-leaf-300 text-lg w-7 shrink-0">' + String(i + 1).padStart(2, '0') + '</span>' +
+                                '<span class="text-sm text-leaf-800 pt-0.5">' + esc(s) + '</span>' +
+                                '</div>';
+                        }).join('') +
+                        '</div>' +
+                        '<div class="bg-orange-50 rounded-xl p-3.5 text-xs text-clay-700 leading-relaxed"><span class="font-bold">⚠️ ' + esc(t('important_label')) + ':</span> ' + esc(t('important_text')) + '</div>' +
+                        '</div>' +
+
+                        '<div class="bg-white rounded-3xl shadow-soft p-5 mb-5">' +
+                        '<h3 class="font-display font-bold text-leaf-900 mb-3">🌦️ ' + esc(t('weather_insight')) + '</h3>' +
+                        '<div class="text-sm text-leaf-700/60 mb-1 font-semibold">' + esc(t('current_conditions')) + '</div>' +
+                        '<div class="text-sm text-leaf-800 mb-3">' + CURRENT_WEATHER.temp + '°C · ' + esc(t('humidity')) + ' ' + CURRENT_WEATHER.humidity + '% · ' + esc(t('rain_chance')) + ' ' + CURRENT_WEATHER.rain + '%</div>' +
+                        '<p class="text-sm text-leaf-800/80 mb-4 leading-relaxed">' + esc(t('weather_insight_text')) + '</p>' +
+                        '<div class="mb-4">' +
+                        '<div class="flex items-center justify-between text-xs font-semibold text-leaf-700 mb-1.5"><span>' + esc(t('risk_level')) + '</span><span>' + esc(riskLabel(risk)) + '</span></div>' +
+                        '<div class="h-2.5 rounded-full bg-gradient-to-r from-leaf-400 via-amber-400 to-clay-600 relative">' +
+                        '<span class="absolute -top-1 w-4 h-4 rounded-full bg-white border-2 border-leaf-800 shadow" style="left:calc(' + riskPct(risk) + '% - 8px)"></span>' +
+                        '</div>' +
+                        '</div>' +
+                        '<a href="#/weather" class="leaf-btn block text-center bg-leaf-50 text-leaf-800 font-semibold py-2.5 rounded-xl text-sm">' + esc(t('view_weather')) + '</a>' +
+                        '</div>' +
+
+                        '<div class="grid grid-cols-2 gap-3">' +
+                        (isDraft ? '<button id="btn-save-report" class="leaf-btn col-span-2 py-4 rounded-2xl bg-leaf-700 text-white font-display font-bold shadow-pop">💾 ' + esc(t('btn_save_report')) + '</button>' : '') +
+                        '<button id="btn-scan-another" class="leaf-btn py-3.5 rounded-2xl bg-sand-100 text-leaf-800 font-semibold text-sm">📸 ' + esc(t('btn_scan_another')) + '</button>' +
+                        (!alreadyTracked ? '<button id="btn-add-to-crops" class="leaf-btn py-3.5 rounded-2xl bg-sand-100 text-leaf-800 font-semibold text-sm">🌱 ' + esc(t('btn_add_to_crops')) + '</button>' : '<a href="#/crops" class="leaf-btn py-3.5 rounded-2xl bg-sand-100 text-leaf-800 font-semibold text-sm text-center">🌱 ' + esc(t('nav_crops')) + '</a>') +
+                        '<button id="btn-share-report" class="leaf-btn py-3.5 rounded-2xl bg-sand-100 text-leaf-800 font-semibold text-sm">📤 ' + esc(t('btn_share_report')) + '</button>' +
+                        '<a href="#/home" class="leaf-btn py-3.5 rounded-2xl bg-sand-100 text-leaf-800 font-semibold text-sm text-center">🏠 ' + esc(t('btn_back_dashboard')) + '</a>' +
+                        '</div>' +
+                        '</div>');
+                }
+
+                function saveReportFromDraft() {
+                    var d = pendingScan;
+                    if (!d || !d.result) return;
+                    var cropId = d.result.cropId;
+                    var existing = state.crops.find(function (c) { return c.cropId === cropId; });
+                    var scanId = uid();
+                    var dateStr = todayISO(0);
+                    if (!existing) {
+                        existing = { id: uid(), cropId: cropId, field: '—', planted: dateStr, area: '—', health: d.result.health, status: d.result.status, lastScan: dateStr, scans: 0 };
+                        state.crops.push(existing);
+                    }
+                    existing.health = d.result.health;
+                    existing.status = d.result.status;
+                    existing.lastScan = dateStr;
+                    existing.scans = (existing.scans || 0) + 1;
+
+                    state.scans.push({
+                        id: scanId, cropRef: existing.id, cropId: cropId, date: dateStr,
+                        health: d.result.health, issueEn: d.result.issueEn, issueTa: d.result.issueTa,
+                        status: d.result.status, confidence: d.result.confidence, image: d.imageData || null, risk: d.result.risk
+                    });
+
+                    state.notifications.unshift({ id: uid(), type: 'scan_saved', cropId: cropId, date: dateStr, read: false });
+                    saveState();
+                    toast(t('toast_report_saved'));
+                    pendingScan = { result: d.result, imageData: d.imageData, savedId: scanId };
+                    navigate('#/scan/result/' + scanId);
+                }
+
+                /* ---------- MY CROPS ---------- */
+
+                function viewCrops() {
+                    var list = state.crops.slice().sort(function (a, b) { return b.lastScan.localeCompare(a.lastScan); });
+                    return (
+                        '<div class="max-w-4xl mx-auto px-4 md:px-6 pt-6 pb-10">' +
+                        '<div class="flex items-center justify-between mb-5">' +
+                        '<div><h1 class="font-display text-2xl md:text-3xl font-extrabold text-leaf-900">' + esc(t('my_crops_heading')) + '</h1></div>' +
+                        '<a href="#/crops/add" class="leaf-btn bg-leaf-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm shadow-soft whitespace-nowrap">' + esc(t('add_new_crop')) + '</a>' +
+                        '</div>' +
+                        (list.length === 0 ?
+                            '<div class="bg-white rounded-3xl shadow-soft p-10 text-center">' +
+                            '<div class="text-5xl mb-3">🌱</div>' +
+                            '<p class="text-leaf-700/70 mb-5">' + esc(t('no_crops_msg')) + '</p>' +
+                            '<a href="#/crops/add" class="leaf-btn inline-block bg-leaf-700 text-white font-semibold px-5 py-3 rounded-xl">' + esc(t('add_first_crop')) + '</a>' +
+                            '</div>'
+                            :
+                            '<div class="grid md:grid-cols-2 gap-4">' +
+                            list.map(function (c) {
+                                var sc = statusColor(c.status);
+                                return '<div class="card-hover bg-white rounded-3xl shadow-soft p-5">' +
+                                    '<div class="flex items-start gap-3 mb-4">' +
+                                    '<span class="text-4xl">' + cropIcon(c.cropId) + '</span>' +
+                                    '<div class="flex-1">' +
+                                    '<div class="font-display font-bold text-lg text-leaf-900">' + esc(cropName(c.cropId)) + '</div>' +
+                                    '<div class="text-xs text-leaf-700/60">' + esc(t('field_label')) + ': ' + esc(c.field) + ' · ' + esc(t('planted_label')) + ': ' + esc(fmtDate(c.planted)) + '</div>' +
+                                    '</div>' +
+                                    '<span class="text-xs font-bold px-2.5 py-1 rounded-full shrink-0 ' + sc.bg + ' ' + sc.text + '">' + sc.emoji + ' ' + esc(statusLabel(c.status)) + '</span>' +
+                                    '</div>' +
+                                    '<div class="grid grid-cols-3 gap-2 mb-4 text-center">' +
+                                    '<div class="bg-sand-50 rounded-xl py-2"><div class="font-display font-extrabold text-leaf-800">' + c.health + '%</div><div class="text-[10px] text-leaf-700/60 font-semibold">' + esc(t('health_label')) + '</div></div>' +
+                                    '<div class="bg-sand-50 rounded-xl py-2"><div class="font-display font-extrabold text-leaf-800 text-sm">' + esc(relativeDate(c.lastScan)) + '</div><div class="text-[10px] text-leaf-700/60 font-semibold">' + esc(t('last_scan_label')) + '</div></div>' +
+                                    '<div class="bg-sand-50 rounded-xl py-2"><div class="font-display font-extrabold text-leaf-800">' + (c.scans || 0) + '</div><div class="text-[10px] text-leaf-700/60 font-semibold">' + esc(t('scans_label')) + '</div></div>' +
+                                    '</div>' +
+                                    '<div class="flex gap-2">' +
+                                    '<a href="#/crops/' + c.id + '" class="leaf-btn flex-1 text-center py-2.5 rounded-xl bg-leaf-50 text-leaf-800 font-semibold text-sm">' + esc(t('view_crop')) + '</a>' +
+                                    '<a href="#/scan?crop=' + c.cropId + '" class="leaf-btn flex-1 text-center py-2.5 rounded-xl bg-sand-100 text-leaf-800 font-semibold text-sm">' + esc(t('scan_again')) + '</a>' +
+                                    '</div>' +
+                                    '</div>';
+                            }).join('') +
+                            '</div>'
+                        ) +
+                        '</div>');
+                }
+
+                function viewCropAdd() {
+                    var f = addCropForm || { cropId: '', field: '', planted: todayISO(0), area: '' };
+                    return (
+                        '<div class="max-w-lg mx-auto px-4 md:px-6 pt-6 pb-10">' +
+                        sectionTitle(t('add_crop_heading')) +
+                        '<div class="bg-white rounded-3xl shadow-soft p-5 flex flex-col gap-4">' +
+                        '<div>' +
+                        '<label class="block text-sm font-semibold text-leaf-800 mb-1.5">' + esc(t('crop_name_label')) + '</label>' +
+                        '<select id="ac-crop" class="w-full border-2 border-leaf-100 rounded-xl px-3 py-3 bg-sand-50">' +
+                        '<option value="" disabled ' + (!f.cropId ? 'selected' : '') + '>' + esc(t('select_placeholder')) + '</option>' +
+                        CROPS.map(function (c) { return '<option value="' + c.id + '" ' + (f.cropId === c.id ? 'selected' : '') + '>' + c.icon + ' ' + esc(state.language === 'ta' ? c.ta : c.en) + '</option>'; }).join('') +
+                        '</select>' +
+                        '</div>' +
+                        '<div>' +
+                        '<label class="block text-sm font-semibold text-leaf-800 mb-1.5">' + esc(t('field_name_label')) + '</label>' +
+                        '<input id="ac-field" type="text" value="' + esc(f.field) + '" class="w-full border-2 border-leaf-100 rounded-xl px-3 py-3 bg-sand-50" />' +
+                        '</div>' +
+                        '<div>' +
+                        '<label class="block text-sm font-semibold text-leaf-800 mb-1.5">' + esc(t('planting_date_label')) + '</label>' +
+                        '<input id="ac-planted" type="date" value="' + esc(f.planted) + '" class="w-full border-2 border-leaf-100 rounded-xl px-3 py-3 bg-sand-50" />' +
+                        '</div>' +
+                        '<div>' +
+                        '<label class="block text-sm font-semibold text-leaf-800 mb-1.5">' + esc(t('area_label')) + '</label>' +
+                        '<input id="ac-area" type="text" placeholder="' + esc(t('area_placeholder')) + '" value="' + esc(f.area) + '" class="w-full border-2 border-leaf-100 rounded-xl px-3 py-3 bg-sand-50" />' +
+                        '</div>' +
+                        (f.error ? '<div class="text-sm text-clay-700 font-medium">' + esc(f.error) + '</div>' : '') +
+                        '<div class="flex gap-3 mt-2">' +
+                        '<a href="#/crops" class="leaf-btn flex-1 text-center py-3.5 rounded-xl bg-sand-100 text-leaf-800 font-semibold">' + esc(t('cancel')) + '</a>' +
+                        '<button id="btn-save-crop" class="leaf-btn flex-1 py-3.5 rounded-xl bg-leaf-700 text-white font-semibold">' + esc(t('add_crop_btn')) + '</button>' +
+                        '</div>' +
+                        '</div>' +
+                        '</div>');
+                }
+
+                function trendChartSvg(points) {
+                    var w = 600, h = 180, pad = 30;
+                    if (points.length === 0) return '';
+                    var minV = Math.min.apply(null, points.map(function (p) { return p.v; })) - 5;
+                    var maxV = Math.max.apply(null, points.map(function (p) { return p.v; })) + 5;
+                    var range = Math.max(1, maxV - minV);
+                    var stepX = points.length > 1 ? (w - 2 * pad) / (points.length - 1) : 0;
+                    var coords = points.map(function (p, i) {
+                        var x = pad + i * stepX;
+                        var y = h - pad - ((p.v - minV) / range) * (h - 2 * pad);
+                        return { x: x, y: y, v: p.v, label: p.label };
+                    });
+                    var pathD = coords.map(function (c, i) { return (i === 0 ? 'M' : 'L') + c.x.toFixed(1) + ',' + c.y.toFixed(1); }).join(' ');
+                    var areaD = pathD + ' L' + coords[coords.length - 1].x.toFixed(1) + ',' + (h - pad) + ' L' + coords[0].x.toFixed(1) + ',' + (h - pad) + ' Z';
+                    return (
+                        '<svg viewBox="0 0 ' + w + ' ' + h + '" class="w-full h-40">' +
+                        '<defs><linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">' +
+                        '<stop offset="0%" stop-color="#4c8c39" stop-opacity="0.25"/><stop offset="100%" stop-color="#4c8c39" stop-opacity="0"/>' +
+                        '</linearGradient></defs>' +
+                        '<path d="' + areaD + '" fill="url(#trendGrad)"></path>' +
+                        '<path d="' + pathD + '" fill="none" stroke="#2f6b3c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>' +
+                        coords.map(function (c) {
+                            return '<circle cx="' + c.x.toFixed(1) + '" cy="' + c.y.toFixed(1) + '" r="4.5" fill="#2f6b3c" stroke="white" stroke-width="2"></circle>' +
+                                '<text x="' + c.x.toFixed(1) + '" y="' + (c.y - 10).toFixed(1) + '" font-size="11" text-anchor="middle" fill="#163c22" font-weight="700">' + c.v + '%</text>' +
+                                '<text x="' + c.x.toFixed(1) + '" y="' + (h - 8) + '" font-size="9" text-anchor="middle" fill="#7a8a76">' + esc(c.label) + '</text>';
+                        }).join('') +
+                        '</svg>');
+                }
+
+                function viewCropDetail(id) {
+                    var c = crop(id);
+                    if (!c) return '<div class="max-w-md mx-auto px-6 pt-10 text-center text-leaf-700">Not found</div>';
+                    var scans = scansForCrop(id);
+                    var sc = statusColor(c.status);
+                    var points = scans.map(function (s) { return { v: s.health, label: fmtDate(s.date).split(' ').slice(0, 2).join(' ') }; });
+
+                    var timelineItems = [];
+                    timelineItems.push({ date: c.planted, icon: '🌱', title: t('crop_added'), sub: '' });
+                    scans.forEach(function (s, idx) {
+                        var isIssue = s.status !== 'healthy';
+                        timelineItems.push({ date: s.date, icon: isIssue ? '⚠️' : '🔬', title: (idx === scans.length - 1 ? t('last_scan_label') : t('first_scan')) + ' · ' + s.health + '%', sub: isIssue ? t('issue_detected') : '' });
+                    });
+                    timelineItems.sort(function (a, b) { return a.date.localeCompare(b.date); });
+
+                    return (
+                        '<div class="max-w-3xl mx-auto px-4 md:px-6 pt-6 pb-10">' +
+                        '<a href="#/crops" class="text-sm font-semibold text-leaf-600 mb-3 inline-block">← ' + esc(t('back')) + '</a>' +
+                        '<div class="flex items-center gap-3 mb-5">' +
+                        '<span class="text-4xl">' + cropIcon(c.cropId) + '</span>' +
+                        '<div><h1 class="font-display text-2xl font-extrabold text-leaf-900">' + esc(cropName(c.cropId)) + ' — ' + esc(c.field) + '</h1>' +
+                        '<span class="text-xs font-bold px-2.5 py-1 rounded-full ' + sc.bg + ' ' + sc.text + '">' + sc.emoji + ' ' + esc(statusLabel(c.status)) + '</span></div>' +
+                        '</div>' +
+
+                        '<div class="grid md:grid-cols-3 gap-3 mb-6">' +
+                        '<div class="bg-white rounded-2xl p-4 shadow-soft text-center"><div class="font-display text-2xl font-extrabold text-leaf-800">' + c.health + '%</div><div class="text-xs text-leaf-700/60 font-semibold">' + esc(t('health_label')) + '</div></div>' +
+                        '<div class="bg-white rounded-2xl p-4 shadow-soft text-center"><div class="font-display text-2xl font-extrabold text-leaf-800">' + (c.scans || 0) + '</div><div class="text-xs text-leaf-700/60 font-semibold">' + esc(t('scans_label')) + '</div></div>' +
+                        '<div class="bg-white rounded-2xl p-4 shadow-soft text-center"><div class="font-display text-lg font-extrabold text-leaf-800">' + esc(c.area) + '</div><div class="text-xs text-leaf-700/60 font-semibold">' + esc(t('area_label')) + '</div></div>' +
+                        '</div>' +
+
+                        '<div class="bg-white rounded-3xl shadow-soft p-5 mb-6">' +
+                        '<h3 class="font-display font-bold text-leaf-900 mb-2">' + esc(t('crop_health_trend')) + '</h3>' +
+                        (points.length ? trendChartSvg(points) : '<div class="text-sm text-leaf-700/60 py-6 text-center">—</div>') +
+                        '</div>' +
+
+                        '<div class="bg-white rounded-3xl shadow-soft p-5 mb-6">' +
+                        '<h3 class="font-display font-bold text-leaf-900 mb-3">' + esc(t('recent_scans')) + '</h3>' +
+                        '<div class="flex flex-col divide-y divide-sand-100">' +
+                        scans.slice().reverse().map(function (s) {
+                            var scc = statusColor(s.status);
+                            return '<div class="py-3 flex items-center gap-3">' +
+                                '<span class="text-xl">' + (s.status === 'healthy' ? '✅' : '⚠️') + '</span>' +
+                                '<div class="flex-1"><div class="text-sm font-semibold text-leaf-900">' + esc(fmtDate(s.date)) + ' · ' + s.health + '%</div>' +
+                                '<div class="text-xs text-leaf-700/60">' + esc(state.language === 'ta' ? s.issueTa : s.issueEn) + '</div></div>' +
+                                '<span class="text-[10px] font-bold px-2 py-1 rounded-full shrink-0 ' + scc.bg + ' ' + scc.text + '">' + esc(statusLabel(s.status)) + '</span>' +
+                                '<a href="#/scan/result/' + s.id + '" class="text-xs font-semibold text-leaf-700 underline shrink-0">' + esc(t('view_report')) + '</a>' +
+                                '</div>';
+                        }).join('') +
+                        '</div>' +
+                        '</div>' +
+
+                        '<div class="bg-white rounded-3xl shadow-soft p-5 mb-6">' +
+                        '<h3 class="font-display font-bold text-leaf-900 mb-4">' + esc(t('crop_journey')) + '</h3>' +
+                        '<div class="flex flex-col gap-4">' +
+                        timelineItems.map(function (it) {
+                            return '<div class="flex gap-3">' +
+                                '<div class="w-8 h-8 rounded-full bg-leaf-50 flex items-center justify-center text-sm shrink-0">' + it.icon + '</div>' +
+                                '<div><div class="text-xs text-leaf-700/50 font-semibold">' + esc(fmtDate(it.date)) + '</div>' +
+                                '<div class="text-sm font-semibold text-leaf-900">' + esc(it.title) + '</div>' +
+                                (it.sub ? '<div class="text-xs text-clay-600">' + esc(it.sub) + '</div>' : '') + '</div>' +
+                                '</div>';
+                        }).join('') +
+                        '</div>' +
+                        '</div>' +
+
+                        '<a href="#/scan?crop=' + c.cropId + '" class="leaf-btn block text-center py-3.5 rounded-2xl bg-leaf-700 text-white font-semibold">📸 ' + esc(t('scan_again')) + '</a>' +
+                        '</div>');
+                }
+
+                /* ---------- WEATHER ---------- */
+
+                function viewWeather() {
+                    var alerts = [];
+                    if (CURRENT_WEATHER.rain >= 50) alerts.push({ icon: '🌧️', t: t('rain_alert_t'), d: t('rain_alert_d') });
+                    if (CURRENT_WEATHER.humidity >= 70) alerts.push({ icon: '💧', t: t('humidity_alert_t'), d: t('humidity_alert_d') });
+                    if (CURRENT_WEATHER.temp >= 33) alerts.push({ icon: '🌡️', t: t('heat_alert_t'), d: t('heat_alert_d') });
+
+                    return (
+                        '<div class="max-w-4xl mx-auto px-4 md:px-6 pt-6 pb-10">' +
+                        sectionTitle(t('weather_heading')) +
+                        '<div class="flex items-center justify-between bg-white rounded-2xl px-4 py-3 shadow-soft mb-5">' +
+                        '<div class="text-sm"><span class="text-leaf-700/60">' + esc(t('your_location')) + ':</span> <span class="font-semibold text-leaf-900">' + esc(t('village_label') === 'Village / City' ? 'Coimbatore, Tamil Nadu' : (state.language === 'ta' ? 'கோயம்புத்தூர், தமிழ்நாடு' : 'Coimbatore, Tamil Nadu')) + '</span></div>' +
+                        '<button id="change-location" class="text-xs font-bold text-leaf-700 underline">' + esc(t('change')) + '</button>' +
+                        '</div>' +
+
+                        '<div class="bg-gradient-to-br from-leaf-700 to-leaf-800 rounded-3xl p-6 text-white shadow-pop mb-6">' +
+                        '<div class="flex items-center gap-4 mb-4">' +
+                        '<span class="text-5xl">☁️</span>' +
+                        '<div><div class="font-display text-4xl font-extrabold">' + CURRENT_WEATHER.temp + '°C</div>' +
+                        '<div class="text-leaf-50/90">' + esc(state.language === 'ta' ? CURRENT_WEATHER.conditionTa : CURRENT_WEATHER.condition) + '</div></div>' +
+                        '</div>' +
+                        '<div class="grid grid-cols-4 gap-2 text-center text-xs">' +
+                        '<div class="bg-white/10 rounded-xl py-2"><div class="font-display text-lg font-bold">' + CURRENT_WEATHER.humidity + '%</div>' + esc(t('humidity')) + '</div>' +
+                        '<div class="bg-white/10 rounded-xl py-2"><div class="font-display text-lg font-bold">' + CURRENT_WEATHER.wind + '</div>' + esc(t('wind')) + ' km/h</div>' +
+                        '<div class="bg-white/10 rounded-xl py-2"><div class="font-display text-lg font-bold">' + CURRENT_WEATHER.rain + '%</div>' + esc(t('rain_chance')) + '</div>' +
+                        '<div class="bg-white/10 rounded-xl py-2"><div class="font-display text-lg font-bold">' + esc(state.language === 'ta' ? CURRENT_WEATHER.uvTa : CURRENT_WEATHER.uv) + '</div>' + esc(t('uv')) + '</div>' +
+                        '</div>' +
+                        '</div>' +
+
+                        '<h3 class="font-display font-bold text-leaf-900 mb-3">' + esc(t('seven_day')) + '</h3>' +
+                        '<div class="flex gap-2 overflow-x-auto scrollbar-none pb-2 mb-6">' +
+                        FORECAST.map(function (f) {
+                            return '<div class="bg-white rounded-2xl shadow-soft p-3 text-center shrink-0 w-20">' +
+                                '<div class="text-xs font-bold text-leaf-700 mb-1">' + esc(state.language === 'ta' ? f.dayTa : f.day) + '</div>' +
+                                '<div class="text-xl mb-1">⛅</div>' +
+                                '<div class="text-sm font-semibold text-leaf-900">' + f.hi + '°</div>' +
+                                '<div class="text-xs text-leaf-700/50">' + f.lo + '°</div>' +
+                                '</div>';
+                        }).join('') +
+                        '</div>' +
+
+                        '<h3 class="font-display font-bold text-leaf-900 mb-3">' + esc(t('crop_alerts')) + '</h3>' +
+                        '<div class="flex flex-col gap-3 mb-6">' +
+                        (alerts.length ? alerts.map(function (a) {
+                            return '<div class="bg-white rounded-2xl shadow-soft p-4 flex items-start gap-3">' +
+                                '<span class="text-2xl">' + a.icon + '</span>' +
+                                '<div><div class="font-semibold text-leaf-900 text-sm">' + esc(a.t) + '</div><div class="text-xs text-leaf-700/60">' + esc(a.d) + '</div></div>' +
+                                '</div>';
+                        }).join('') : '<div class="text-sm text-leaf-700/60">—</div>') +
+                        '</div>' +
+                        '<a href="#/guide" class="leaf-btn block text-center py-3.5 rounded-2xl bg-leaf-700 text-white font-semibold">' + esc(t('view_crop_recs')) + '</a>' +
+                        '</div>');
+                }
+
+                /* ---------- CROP GUIDE ---------- */
+
+                function viewGuide() {
+                    var q = guideSearch.trim().toLowerCase();
+                    var filtered = CROP_GUIDE.filter(function (g) {
+                        if (!q) return true;
+                        var name = cropName(g.id).toLowerCase();
+                        var nameEn = (cropById(g.id) || {}).en.toLowerCase();
+                        var diseases = g.diseases.join(' ').toLowerCase();
+                        return name.indexOf(q) >= 0 || nameEn.indexOf(q) >= 0 || diseases.indexOf(q) >= 0;
+                    });
+                    return (
+                        '<div class="max-w-4xl mx-auto px-4 md:px-6 pt-6 pb-10">' +
+                        sectionTitle(t('guide_heading')) +
+                        '<div class="relative mb-4">' +
+                        '<input id="guide-search-input" value="' + esc(guideSearch) + '" placeholder="🔍 ' + esc(t('guide_search')) + '" class="w-full border-2 border-leaf-100 rounded-2xl px-4 py-3.5 bg-white shadow-soft" />' +
+                        '</div>' +
+                        '<div class="flex gap-2 overflow-x-auto scrollbar-none pb-2 mb-5">' +
+                        CATEGORIES.map(function (cat) {
+                            return '<span class="shrink-0 text-xs font-bold px-3 py-2 rounded-full bg-leaf-50 text-leaf-700">' + esc(state.language === 'ta' ? cat.ta : cat.en) + '</span>';
+                        }).join('') +
+                        '</div>' +
+                        '<div class="grid md:grid-cols-2 gap-4">' +
+                        filtered.map(function (g) {
+                            return '<a href="#/guide/' + g.id + '" class="card-hover block bg-white rounded-3xl shadow-soft p-5">' +
+                                '<div class="flex items-center gap-3 mb-3"><span class="text-3xl">' + cropIcon(g.id) + '</span><span class="font-display font-bold text-lg text-leaf-900">' + esc(cropName(g.id)) + '</span></div>' +
+                                '<div class="text-xs text-leaf-700/60 font-semibold mb-1">' + esc(t('common_issues')) + ':</div>' +
+                                '<div class="flex flex-wrap gap-1.5">' +
+                                g.diseases.map(function (d) { return '<span class="text-xs bg-sand-100 text-leaf-800 px-2.5 py-1 rounded-full">' + esc(d) + '</span>'; }).join('') +
+                                '</div>' +
+                                '</a>';
+                        }).join('') +
+                        (filtered.length === 0 ? '<div class="text-sm text-leaf-700/60 col-span-2 text-center py-10">—</div>' : '') +
+                        '</div>' +
+                        '</div>');
+                }
+
+                function viewGuideDetail(id) {
+                    var g = CROP_GUIDE.find(function (x) { return x.id === id; });
+                    if (!g) return '<div class="max-w-md mx-auto px-6 pt-10 text-center text-leaf-700">Not found</div>';
+                    return (
+                        '<div class="max-w-2xl mx-auto px-4 md:px-6 pt-6 pb-10">' +
+                        '<a href="#/guide" class="text-sm font-semibold text-leaf-600 mb-3 inline-block">← ' + esc(t('back')) + '</a>' +
+                        '<div class="flex items-center gap-3 mb-6"><span class="text-4xl">' + cropIcon(g.id) + '</span><h1 class="font-display text-2xl font-extrabold text-leaf-900">' + esc(cropName(g.id)) + '</h1></div>' +
+
+                        '<div class="bg-white rounded-3xl shadow-soft p-5 mb-4">' +
+                        '<h3 class="font-display font-bold text-leaf-900 mb-2">' + esc(t('basic_info')) + '</h3>' +
+                        '<p class="text-sm text-leaf-800/80 leading-relaxed">' + esc(state.language === 'ta' ? g.basicTa : g.basicEn) + '</p>' +
+                        '</div>' +
+
+                        '<div class="bg-white rounded-3xl shadow-soft p-5 mb-4">' +
+                        '<h3 class="font-display font-bold text-leaf-900 mb-2">' + esc(t('common_diseases')) + '</h3>' +
+                        '<div class="flex flex-wrap gap-2">' + g.diseases.map(function (d) { return '<span class="text-xs bg-orange-50 text-clay-700 px-3 py-1.5 rounded-full font-medium">🦠 ' + esc(d) + '</span>'; }).join('') + '</div>' +
+                        '</div>' +
+
+                        '<div class="bg-white rounded-3xl shadow-soft p-5 mb-4">' +
+                        '<h3 class="font-display font-bold text-leaf-900 mb-2">' + esc(t('common_pests')) + '</h3>' +
+                        '<div class="flex flex-wrap gap-2">' + g.pests.map(function (d) { return '<span class="text-xs bg-amber-50 text-amber-700 px-3 py-1.5 rounded-full font-medium">🐛 ' + esc(d) + '</span>'; }).join('') + '</div>' +
+                        '</div>' +
+
+                        '<div class="bg-white rounded-3xl shadow-soft p-5 mb-4">' +
+                        '<h3 class="font-display font-bold text-leaf-900 mb-2">' + esc(t('nutrient_def')) + '</h3>' +
+                        '<div class="flex flex-wrap gap-2">' + g.deficiencies.map(function (d) { return '<span class="text-xs bg-leaf-50 text-leaf-700 px-3 py-1.5 rounded-full font-medium">🧪 ' + esc(d) + '</span>'; }).join('') + '</div>' +
+                        '</div>' +
+
+                        '<div class="bg-white rounded-3xl shadow-soft p-5 mb-4">' +
+                        '<h3 class="font-display font-bold text-leaf-900 mb-2">' + esc(t('prevention')) + '</h3>' +
+                        '<p class="text-sm text-leaf-800/80 leading-relaxed">' + esc(state.language === 'ta' ? g.preventionTa : g.preventionEn) + '</p>' +
+                        '</div>' +
+
+                        '<div class="bg-amber-50 rounded-3xl p-5 mb-6">' +
+                        '<h3 class="font-display font-bold text-amber-800 mb-2">⚠️ ' + esc(t('seek_expert')) + '</h3>' +
+                        '<p class="text-sm text-amber-800/80 leading-relaxed">' + esc(t('seek_expert_text')) + '</p>' +
+                        '</div>' +
+
+                        '<a href="#/scan?crop=' + g.id + '" class="leaf-btn block text-center py-3.5 rounded-2xl bg-leaf-700 text-white font-semibold">📸 ' + esc(t('scan_this')) + ' ' + esc(cropName(g.id)) + '</a>' +
+                        '</div>');
+                }
+
+                /* ---------- HISTORY ---------- */
+
+                function viewHistory() {
+                    var all = state.scans.slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
+                    var cropsUsed = [];
+                    all.forEach(function (s) { if (cropsUsed.indexOf(s.cropId) === -1) cropsUsed.push(s.cropId); });
+
+                    var filtered = all.filter(function (s) {
+                        if (historyFilters.crop !== 'all' && s.cropId !== historyFilters.crop) return false;
+                        if (historyFilters.status !== 'all' && s.status !== historyFilters.status) return false;
+                        if (historyFilters.q) {
+                            var q = historyFilters.q.toLowerCase();
+                            var hay = (cropName(s.cropId) + ' ' + s.issueEn + ' ' + s.issueTa).toLowerCase();
+                            if (hay.indexOf(q) === -1) return false;
+                        }
+                        return true;
+                    });
+
+                    return (
+                        '<div class="max-w-3xl mx-auto px-4 md:px-6 pt-6 pb-10">' +
+                        sectionTitle(t('history_heading')) +
+                        '<div class="grid grid-cols-2 gap-2 mb-3">' +
+                        '<select id="hf-crop" class="border-2 border-leaf-100 rounded-xl px-3 py-2.5 bg-white text-sm">' +
+                        '<option value="all">' + esc(t('filter_crop')) + ': ' + esc(t('all')) + '</option>' +
+                        cropsUsed.map(function (cid) { return '<option value="' + cid + '" ' + (historyFilters.crop === cid ? 'selected' : '') + '>' + esc(cropName(cid)) + '</option>'; }).join('') +
+                        '</select>' +
+                        '<select id="hf-status" class="border-2 border-leaf-100 rounded-xl px-3 py-2.5 bg-white text-sm">' +
+                        '<option value="all">' + esc(t('filter_status')) + ': ' + esc(t('all')) + '</option>' +
+                        '<option value="healthy" ' + (historyFilters.status === 'healthy' ? 'selected' : '') + '>' + esc(t('status_healthy')) + '</option>' +
+                        '<option value="monitor" ' + (historyFilters.status === 'monitor' ? 'selected' : '') + '>' + esc(t('status_monitor')) + '</option>' +
+                        '<option value="attention" ' + (historyFilters.status === 'attention' ? 'selected' : '') + '>' + esc(t('status_attention')) + '</option>' +
+                        '</select>' +
+                        '</div>' +
+                        '<input id="hf-search" value="' + esc(historyFilters.q) + '" placeholder="🔍 ' + esc(t('search_scans')) + '" class="w-full border-2 border-leaf-100 rounded-xl px-4 py-3 bg-white mb-5" />' +
+
+                        (filtered.length === 0 ?
+                            '<div class="bg-white rounded-3xl shadow-soft p-10 text-center">' +
+                            '<div class="text-5xl mb-3">🕒</div>' +
+                            '<p class="text-leaf-700/70 mb-5">' + esc(t('empty_history')) + '</p>' +
+                            '<a href="#/scan" class="leaf-btn inline-block bg-leaf-700 text-white font-semibold px-5 py-3 rounded-xl">' + esc(t('scan_first_crop')) + '</a>' +
+                            '</div>'
+                            :
+                            '<div class="flex flex-col gap-3">' +
+                            filtered.map(function (s) {
+                                var sc = statusColor(s.status);
+                                return '<div class="bg-white rounded-2xl shadow-soft p-4 flex items-center gap-3">' +
+                                    '<div class="w-12 h-12 rounded-xl bg-sand-100 flex items-center justify-center text-2xl shrink-0 overflow-hidden">' +
+                                    (s.image ? '<img src="' + s.image + '" alt="' + esc(cropName(s.cropId)) + ' scan thumbnail" class="w-full h-full object-cover" />' : '<span role="img" aria-label="' + esc(cropName(s.cropId)) + '">' + cropIcon(s.cropId) + '</span>') +
+                                    '</div>' +
+                                    '<div class="flex-1 min-w-0">' +
+                                    '<div class="text-sm font-bold text-leaf-900">' + esc(cropName(s.cropId)) + ' · ' + esc(fmtDate(s.date)) + '</div>' +
+                                    '<div class="text-xs text-leaf-700/60 truncate">' + esc(state.language === 'ta' ? s.issueTa : s.issueEn) + '</div>' +
+                                    '</div>' +
+                                    '<div class="text-right shrink-0">' +
+                                    '<div class="font-display font-extrabold text-leaf-800">' + s.health + '%</div>' +
+                                    '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ' + sc.bg + ' ' + sc.text + '">' + esc(statusLabel(s.status)) + '</span>' +
+                                    '</div>' +
+                                    '<div class="flex flex-col gap-1 shrink-0">' +
+                                    '<a href="#/scan/result/' + s.id + '" class="text-xs font-semibold text-leaf-700 underline">' + esc(t('view_report')) + '</a>' +
+                                    '<button data-delete-scan="' + s.id + '" class="text-xs font-semibold text-clay-600 underline">' + esc(t('delete')) + '</button>' +
+                                    '</div>' +
+                                    '</div>';
+                            }).join('') +
+                            '</div>'
+                        ) +
+                        '</div>');
+                }
+
+                /* ---------- NOTIFICATIONS ---------- */
+
+                function notifText(n) {
+                    if (n.type === 'reminder') return { icon: '⚠️', title: t('notif_reminder'), sub: cropName(n.cropId) + ' ' + t('notif_reminder_d') };
+                    if (n.type === 'rain') return { icon: '🌧️', title: t('notif_rain'), sub: t('notif_rain_d') };
+                    if (n.type === 'healthy') return { icon: '✅', title: t('notif_healthy'), sub: cropName(n.cropId) + ' ' + t('notif_healthy_d') };
+                    return { icon: '🔬', title: t('notif_new_scan'), sub: cropName(n.cropId) + ' ' + t('notif_scan_saved_d') };
+                }
+
+                function viewNotifications() {
+                    var list = state.notifications.slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
+                    return (
+                        '<div class="max-w-2xl mx-auto px-4 md:px-6 pt-6 pb-10">' +
+                        sectionTitle(t('notifications_heading')) +
+                        (list.length === 0 ? '<div class="text-sm text-leaf-700/60 text-center py-10">' + esc(t('no_notifications')) + '</div>' :
+                            '<div class="flex flex-col gap-3">' +
+                            list.map(function (n) {
+                                var x = notifText(n);
+                                return '<div class="bg-white rounded-2xl shadow-soft p-4 flex items-start gap-3 ' + (n.read ? 'opacity-60' : '') + '">' +
+                                    '<span class="text-2xl">' + x.icon + '</span>' +
+                                    '<div class="flex-1"><div class="font-semibold text-leaf-900 text-sm">' + esc(x.title) + '</div>' +
+                                    '<div class="text-xs text-leaf-700/60">' + esc(x.sub) + '</div>' +
+                                    '<div class="text-[10px] text-leaf-700/40 mt-1 font-semibold">' + esc(relativeDate(n.date)) + '</div></div>' +
+                                    (!n.read ? '<span class="w-2.5 h-2.5 rounded-full bg-leaf-600 mt-1 shrink-0"></span>' : '') +
+                                    '</div>';
+                            }).join('') +
+                            '</div>') +
+                        '</div>');
+                }
+
+                /* ---------- PROFILE / SETTINGS ---------- */
+
+                function viewProfile() {
+                    var p = editingProfile ? (pendingProfileForm || state.profile) : state.profile;
+                    return (
+                        '<div class="max-w-lg mx-auto px-4 md:px-6 pt-6 pb-10">' +
+                        sectionTitle(t('profile_heading')) +
+                        '<div class="bg-white rounded-3xl shadow-soft p-5 mb-5">' +
+                        '<div class="flex items-center gap-4 mb-5">' +
+                        '<div class="w-16 h-16 rounded-full bg-leaf-700 text-white flex items-center justify-center text-2xl font-bold shrink-0">' + esc((p.name || '?').charAt(0)) + '</div>' +
+                        '<div><div class="font-display font-bold text-lg text-leaf-900">' + esc(p.name) + '</div><div class="text-xs text-leaf-700/60">' + esc(p.village) + ', ' + esc(p.state) + '</div></div>' +
+                        '</div>' +
+                        [
+                            ['name_label', 'name'], ['phone_label', 'phone'], ['village_label', 'village'],
+                            ['district_label', 'district'], ['state_label', 'state']
+                        ].map(function (pair) {
+                            var label = pair[0], key = pair[1];
+                            return '<div class="mb-3">' +
+                                '<label class="block text-xs font-semibold text-leaf-700/60 mb-1">' + esc(t(label)) + '</label>' +
+                                (editingProfile ?
+                                    '<input data-pf="' + key + '" value="' + esc(p[key]) + '" class="w-full border-2 border-leaf-100 rounded-xl px-3 py-2.5 bg-sand-50 text-sm" />' :
+                                    '<div class="text-sm font-semibold text-leaf-900">' + esc(p[key]) + '</div>') +
+                                '</div>';
+                        }).join('') +
+                        '<div class="mb-3">' +
+                        '<label class="block text-xs font-semibold text-leaf-700/60 mb-1">' + esc(t('primary_lang_label')) + '</label>' +
+                        '<div class="text-sm font-semibold text-leaf-900">' + (state.language === 'ta' ? 'தமிழ்' : 'English') + '</div>' +
+                        '</div>' +
+                        '<div class="mb-1">' +
+                        '<label class="block text-xs font-semibold text-leaf-700/60 mb-1">' + esc(t('preferred_crop_label')) + '</label>' +
+                        (editingProfile ?
+                            '<select data-pf="preferredCrop" class="w-full border-2 border-leaf-100 rounded-xl px-3 py-2.5 bg-sand-50 text-sm">' +
+                            CROPS.map(function (c) { return '<option value="' + c.id + '" ' + (p.preferredCrop === c.id ? 'selected' : '') + '>' + c.icon + ' ' + esc(state.language === 'ta' ? c.ta : c.en) + '</option>'; }).join('') +
+                            '</select>' :
+                            '<div class="text-sm font-semibold text-leaf-900">' + cropIcon(p.preferredCrop) + ' ' + esc(cropName(p.preferredCrop)) + '</div>') +
+                        '</div>' +
+                        '</div>' +
+
+                        (editingProfile ?
+                            '<div class="flex gap-3 mb-5">' +
+                            '<button id="btn-cancel-edit-profile" class="leaf-btn flex-1 py-3.5 rounded-xl bg-sand-100 text-leaf-800 font-semibold">' + esc(t('cancel')) + '</button>' +
+                            '<button id="btn-save-profile" class="leaf-btn flex-1 py-3.5 rounded-xl bg-leaf-700 text-white font-semibold">' + esc(t('save_changes')) + '</button>' +
+                            '</div>'
+                            :
+                            '<button id="btn-edit-profile" class="leaf-btn w-full py-3.5 rounded-xl bg-leaf-50 text-leaf-800 font-semibold mb-5">✏️ ' + esc(t('edit_profile')) + '</button>'
+                        ) +
+
+                        '<div class="flex flex-col gap-2">' +
+                        '<a href="#/settings" class="leaf-btn bg-white rounded-xl px-4 py-3.5 shadow-soft flex items-center gap-3 font-semibold text-leaf-800 text-sm">🌐 ' + esc(t('language_settings')) + '<span class="ml-auto text-leaf-700/40">›</span></a>' +
+                        '<a href="#/settings" class="leaf-btn bg-white rounded-xl px-4 py-3.5 shadow-soft flex items-center gap-3 font-semibold text-leaf-800 text-sm">🔔 ' + esc(t('notification_settings')) + '<span class="ml-auto text-leaf-700/40">›</span></a>' +
+                        '<button id="btn-clear-demo" class="leaf-btn bg-white rounded-xl px-4 py-3.5 shadow-soft flex items-center gap-3 font-semibold text-clay-600 text-sm text-left">🗑️ ' + esc(t('clear_demo_data')) + '</button>' +
+                        '</div>' +
+                        '</div>');
+                }
+
+                function toggleSwitch(id, on, label) {
+                    return '<div id="' + id + '" data-on="' + (on ? '1' : '0') + '" role="switch" aria-checked="' + (on ? 'true' : 'false') + '" aria-label="' + esc(label || '') + '" tabindex="0" class="switch ' + (on ? 'on' : 'off') + '"><span class="dot"></span></div>';
+                }
+
+                function viewSettings() {
+                    var s = state.settings;
+                    return (
+                        '<div class="max-w-lg mx-auto px-4 md:px-6 pt-6 pb-10">' +
+                        sectionTitle(t('settings_heading')) +
+                        '<div class="bg-white rounded-3xl shadow-soft p-5 mb-4">' +
+                        '<div class="text-sm font-bold text-leaf-700/70 mb-3">' + esc(t('language_settings')) + '</div>' +
+                        '<div class="flex bg-sand-100 rounded-xl p-1">' +
+                        '<button id="set-lang-en" class="flex-1 py-2.5 rounded-lg text-sm font-semibold ' + (state.language === 'en' ? 'bg-white shadow-soft text-leaf-800' : 'text-leaf-700/60') + '">English</button>' +
+                        '<button id="set-lang-ta" class="flex-1 py-2.5 rounded-lg text-sm font-semibold ' + (state.language === 'ta' ? 'bg-white shadow-soft text-leaf-800' : 'text-leaf-700/60') + '">தமிழ்</button>' +
+                        '</div>' +
+                        '</div>' +
+                        '<div class="bg-white rounded-3xl shadow-soft p-5 mb-4 flex flex-col gap-4">' +
+                        '<div class="flex items-center justify-between"><span class="text-sm font-semibold text-leaf-900">' + esc(t('notif_toggle')) + '</span>' + toggleSwitch('sw-notifications', s.notifications, t('notif_toggle')) + '</div>' +
+                        '<div class="flex items-center justify-between"><span class="text-sm font-semibold text-leaf-900">' + esc(t('weather_alerts_toggle')) + '</span>' + toggleSwitch('sw-weather', s.weatherAlerts, t('weather_alerts_toggle')) + '</div>' +
+                        '<div class="flex items-center justify-between"><span class="text-sm font-semibold text-leaf-900">' + esc(t('reminders_toggle')) + '</span>' + toggleSwitch('sw-reminders', s.reminders, t('reminders_toggle')) + '</div>' +
+                        '</div>' +
+                        '<div class="bg-white rounded-3xl shadow-soft p-5 mb-4">' +
+                        '<div class="text-sm font-bold text-leaf-700/70 mb-3">' + esc(t('data_section')) + '</div>' +
+                        '<button id="btn-clear-history" class="leaf-btn w-full py-3 rounded-xl bg-orange-50 text-clay-700 font-semibold text-sm">' + esc(t('clear_scan_history')) + '</button>' +
+                        '</div>' +
+                        '<div class="bg-white rounded-3xl shadow-soft p-5">' +
+                        '<div class="text-sm font-bold text-leaf-700/70 mb-2">' + esc(t('appearance')) + '</div>' +
+                        '<div class="text-xs text-leaf-700/60">' + esc(t('appearance_note')) + '</div>' +
+                        '</div>' +
+                        '</div>');
+                }
+
+                /* ============================= MAIN RENDER ============================= */
+
+                function rerender() {
+                    var route = parseHash();
+                    var app = document.getElementById('app');
+                    document.documentElement.lang = state.language === 'ta' ? 'ta' : 'en';
+
+                    if (!state.onboarded) {
+                        if (route.path === '/onboarding') {
+                            app.innerHTML = renderShell(route, viewOnboarding(), { chrome: false });
+                            bindOnboarding();
+                            return;
+                        }
+                        app.innerHTML = renderShell(route, viewWelcome(), { chrome: false });
+                        bindWelcome();
+                        return;
+                    }
+
+                    var inner = '';
+                    if (route.path === '/' || route.path === '/home') { inner = viewHome(); }
+                    else if (route.path === '/scan') { inner = viewScan(route.query); }
+                    else if (route.path === '/scan/analyzing') { inner = viewAnalyzing(); }
+                    else if (route.segs[0] === 'scan' && route.segs[1] === 'result') { inner = viewScanResult(route.segs[2]); }
+                    else if (route.path === '/crops') { inner = viewCrops(); }
+                    else if (route.path === '/crops/add') { inner = viewCropAdd(); }
+                    else if (route.segs[0] === 'crops' && route.segs[1]) { inner = viewCropDetail(route.segs[1]); }
+                    else if (route.path === '/weather') { inner = viewWeather(); }
+                    else if (route.path === '/guide') { inner = viewGuide(); }
+                    else if (route.segs[0] === 'guide' && route.segs[1]) { inner = viewGuideDetail(route.segs[1]); }
+                    else if (route.path === '/history') { inner = viewHistory(); }
+                    else if (route.path === '/notifications') { inner = viewNotifications(); state.notifications.forEach(function (n) { n.read = true; }); saveState(); }
+                    else if (route.path === '/profile') { inner = viewProfile(); }
+                    else if (route.path === '/settings') { inner = viewSettings(); }
+                    else if (route.path === '/onboarding') { state.onboarded === false; inner = viewOnboarding(); }
+                    else { inner = viewHome(); }
+
+                    app.innerHTML = renderShell(route, inner);
+                    bindGlobal(route);
+                    bindViewHandlers(route);
+
+                    if (route.path === '/scan/analyzing' && !analyzeTimer) { startAnalyzing(); }
+                }
+
+                function bindWelcome() {
+                    var g = document.getElementById('btn-get-started');
+                    var c = document.getElementById('btn-continue-demo');
+                    var l = document.getElementById('welcome-lang');
+                    if (g) g.onclick = function () { navigate('#/onboarding'); };
+                    if (c) c.onclick = function () { state.onboarded = true; saveState(); navigate('#/home'); };
+                    if (l) l.onclick = function () { state.language = state.language === 'en' ? 'ta' : 'en'; saveState(); rerender(); };
+                }
+
+                function bindOnboarding() {
+                    var next = document.getElementById('onb-next');
+                    var back = document.getElementById('onb-back');
+                    var skip = document.getElementById('onb-skip');
+                    if (next) next.onclick = function () {
+                        if (onboardStep < 2) { onboardStep++; rerender(); }
+                        else { state.onboarded = true; saveState(); onboardStep = 0; navigate('#/home'); }
+                    };
+                    if (back) back.onclick = function () { if (onboardStep > 0) { onboardStep--; rerender(); } };
+                    if (skip) skip.onclick = function () { state.onboarded = true; saveState(); onboardStep = 0; navigate('#/home'); };
+                }
+
+                function bindGlobal(route) {
+                    var langBtn = document.getElementById('lang-toggle');
+                    if (langBtn) langBtn.onclick = function () { state.language = state.language === 'en' ? 'ta' : 'en'; saveState(); toast(t('toast_language_changed')); rerender(); };
+                    var drawerLang = document.getElementById('drawer-lang');
+                    if (drawerLang) drawerLang.onclick = function () { state.language = state.language === 'en' ? 'ta' : 'en'; saveState(); rerender(); };
+                    var hamburger = document.getElementById('hamburger-btn');
+                    if (hamburger) hamburger.onclick = function () { drawerOpen = true; rerender(); };
+                    var drawerClose = document.getElementById('drawer-close');
+                    if (drawerClose) drawerClose.onclick = function () { drawerOpen = false; rerender(); };
+                    var backdrop = document.getElementById('drawer-backdrop');
+                    if (backdrop) backdrop.onclick = function () { drawerOpen = false; rerender(); };
+                }
+
+                function bindViewHandlers(route) {
+                    /* SCAN */
+                    var camInput = document.getElementById('camera-input');
+                    var galInput = document.getElementById('gallery-input');
+                    var repInput = document.getElementById('replace-input');
+                    [camInput, galInput, repInput].forEach(function (inp) {
+                        if (inp) inp.onchange = function (e) { if (e.target.files && e.target.files[0]) handleImageFile(e.target.files[0]); };
+                    });
+                    var removeBtn = document.getElementById('btn-remove-image');
+                    if (removeBtn) removeBtn.onclick = function () { pendingScan = pendingScan || {}; pendingScan.imageData = null; pendingScan.fileName = null; pendingScan.fileSizeKB = 0; rerender(); };
+                    var cropSelect = document.getElementById('crop-select');
+                    if (cropSelect) cropSelect.onchange = function (e) { pendingScan = pendingScan || {}; pendingScan.cropId = e.target.value; };
+                    var toggleDetails = document.getElementById('toggle-details');
+                    if (toggleDetails) toggleDetails.onclick = function () { scanDraftDetailsOpen = !scanDraftDetailsOpen; rerender(); };
+                    var ageSel = document.getElementById('detail-age');
+                    if (ageSel) ageSel.onchange = function (e) { pendingScan = pendingScan || {}; pendingScan.age = e.target.value; };
+                    var locInp = document.getElementById('detail-location');
+                    if (locInp) locInp.onchange = function (e) { pendingScan = pendingScan || {}; pendingScan.location = e.target.value; };
+                    var waterInp = document.getElementById('detail-watered');
+                    if (waterInp) waterInp.onchange = function (e) { pendingScan = pendingScan || {}; pendingScan.watered = e.target.value; };
+                    document.querySelectorAll('.rain-btn').forEach(function (btn) {
+                        btn.onclick = function () { pendingScan = pendingScan || {}; pendingScan.rain = btn.getAttribute('data-rain'); rerender(); };
+                    });
+                    var analyzeBtn = document.getElementById('btn-analyze');
+                    if (analyzeBtn) analyzeBtn.onclick = function () {
+                        pendingScan = pendingScan || {};
+                        var cropSel = document.getElementById('crop-select');
+                        var chosenCrop = cropSel ? cropSel.value : pendingScan.cropId;
+                        if (!pendingScan.imageData) { pendingScan.error = t('err_no_image'); rerender(); return; }
+                        if (!chosenCrop) { pendingScan.error = t('err_select_crop'); rerender(); return; }
+                        pendingScan.cropId = chosenCrop;
+                        pendingScan.error = null;
+                        navigate('#/scan/analyzing');
+                    };
+
+                    /* SCAN RESULT */
+                    document.querySelectorAll('[data-toggle]').forEach(function (btn) {
+                        btn.onclick = function () { resultToggleMode = btn.getAttribute('data-toggle'); rerender(); };
+                    });
+                    var saveReportBtn = document.getElementById('btn-save-report');
+                    if (saveReportBtn) saveReportBtn.onclick = function () { saveReportFromDraft(); };
+                    var scanAnotherBtn = document.getElementById('btn-scan-another');
+                    if (scanAnotherBtn) scanAnotherBtn.onclick = function () { pendingScan = null; resultToggleMode = 'original'; navigate('#/scan'); };
+                    var addToCropsBtn = document.getElementById('btn-add-to-crops');
+                    if (addToCropsBtn) addToCropsBtn.onclick = function () {
+                        var cid = analyzeResultCrop || (pendingScan && pendingScan.result && pendingScan.result.cropId);
+                        var recordScan = route.segs[2] !== 'draft' ? state.scans.find(function (s) { return s.id === route.segs[2]; }) : null;
+                        if (recordScan) cid = recordScan.cropId;
+                        if (!cid) return;
+                        var existing = state.crops.find(function (c) { return c.cropId === cid; });
+                        if (!existing) {
+                            state.crops.push({ id: uid(), cropId: cid, field: '—', planted: todayISO(0), area: '—', health: (pendingScan && pendingScan.result ? pendingScan.result.health : 80), status: 'monitor', lastScan: todayISO(0), scans: 0 });
+                            saveState();
+                            toast(t('toast_crop_added'));
+                            rerender();
+                        } else {
+                            toast(t('toast_crop_added'));
+                        }
+                    };
+                    var shareBtn = document.getElementById('btn-share-report');
+                    if (shareBtn) shareBtn.onclick = function () {
+                        var cid = analyzeResultCrop || (pendingScan && pendingScan.result && pendingScan.result.cropId) || '';
+                        var summary = cropName(cid) + ' — ' + t('report_heading');
+                        if (navigator.share) {
+                            navigator.share({ title: t('brand_name'), text: summary }).catch(function () { });
+                        } else {
+                            if (navigator.clipboard) { navigator.clipboard.writeText(summary); }
+                            toast(state.language === 'ta' ? 'சுருக்கம் நகலெடுக்கப்பட்டது' : 'Summary copied to clipboard');
+                        }
+                    };
+
+                    /* CROPS */
+                    var acCrop = document.getElementById('ac-crop');
+                    var acField = document.getElementById('ac-field');
+                    var acPlanted = document.getElementById('ac-planted');
+                    var acArea = document.getElementById('ac-area');
+                    [['ac-crop', 'cropId'], ['ac-field', 'field'], ['ac-planted', 'planted'], ['ac-area', 'area']].forEach(function (pair) {
+                        var el = document.getElementById(pair[0]);
+                        if (el) el.onchange = function (e) { addCropForm = addCropForm || { cropId: '', field: '', planted: todayISO(0), area: '' }; addCropForm[pair[1]] = e.target.value; };
+                    });
+                    var saveCropBtn = document.getElementById('btn-save-crop');
+                    if (saveCropBtn) saveCropBtn.onclick = function () {
+                        addCropForm = addCropForm || {};
+                        var cid = (document.getElementById('ac-crop') || {}).value || addCropForm.cropId;
+                        var field = (document.getElementById('ac-field') || {}).value || addCropForm.field;
+                        var planted = (document.getElementById('ac-planted') || {}).value || addCropForm.planted || todayISO(0);
+                        var area = (document.getElementById('ac-area') || {}).value || addCropForm.area;
+                        if (!cid || !field) { addCropForm.error = state.language === 'ta' ? 'பயிர் மற்றும் வயல் பெயரை நிரப்பவும்.' : 'Please fill in crop and field name.'; rerender(); return; }
+                        state.crops.push({ id: uid(), cropId: cid, field: field, planted: planted, area: area || '—', health: 85, status: 'healthy', lastScan: planted, scans: 0 });
+                        saveState();
+                        addCropForm = null;
+                        toast(t('toast_crop_added'));
+                        navigate('#/crops');
+                    };
+
+                    /* HISTORY */
+                    var hfCrop = document.getElementById('hf-crop');
+                    if (hfCrop) hfCrop.onchange = function (e) { historyFilters.crop = e.target.value; rerender(); };
+                    var hfStatus = document.getElementById('hf-status');
+                    if (hfStatus) hfStatus.onchange = function (e) { historyFilters.status = e.target.value; rerender(); };
+                    var hfSearch = document.getElementById('hf-search');
+                    if (hfSearch) hfSearch.oninput = function (e) { historyFilters.q = e.target.value; rerender(); };
+                    document.querySelectorAll('[data-delete-scan]').forEach(function (btn) {
+                        btn.onclick = function () {
+                            var id = btn.getAttribute('data-delete-scan');
+                            showConfirm(t('confirm_delete_t'), t('confirm_delete_d'), t('delete')).then(function (ok) {
+                                if (ok) {
+                                    state.scans = state.scans.filter(function (s) { return s.id !== id; });
+                                    saveState();
+                                    toast(t('toast_scan_deleted'));
+                                    rerender();
+                                }
+                            });
+                        };
+                    });
+
+                    /* GUIDE */
+                    var guideSearchInput = document.getElementById('guide-search-input');
+                    if (guideSearchInput) guideSearchInput.oninput = function (e) { guideSearch = e.target.value; rerender(); };
+
+                    /* PROFILE */
+                    var editBtn = document.getElementById('btn-edit-profile');
+                    if (editBtn) editBtn.onclick = function () { editingProfile = true; pendingProfileForm = Object.assign({}, state.profile); rerender(); };
+                    var cancelEditBtn = document.getElementById('btn-cancel-edit-profile');
+                    if (cancelEditBtn) cancelEditBtn.onclick = function () { editingProfile = false; pendingProfileForm = null; rerender(); };
+                    document.querySelectorAll('[data-pf]').forEach(function (el) {
+                        el.onchange = function (e) { pendingProfileForm = pendingProfileForm || Object.assign({}, state.profile); pendingProfileForm[el.getAttribute('data-pf')] = e.target.value; };
+                    });
+                    var saveProfileBtn = document.getElementById('btn-save-profile');
+                    if (saveProfileBtn) saveProfileBtn.onclick = function () {
+                        if (pendingProfileForm) state.profile = pendingProfileForm;
+                        editingProfile = false; pendingProfileForm = null;
+                        saveState();
+                        toast(t('toast_profile_updated'));
+                        rerender();
+                    };
+                    var clearDemoBtn = document.getElementById('btn-clear-demo');
+                    if (clearDemoBtn) clearDemoBtn.onclick = function () {
+                        showConfirm(t('clear_confirm_t'), t('clear_confirm_d'), t('clear_demo_data')).then(function (ok) {
+                            if (ok) {
+                                var lang = state.language;
+                                state = defaultState();
+                                state.language = lang;
+                                state.onboarded = true;
+                                saveState();
+                                navigate('#/home');
+                            }
+                        });
+                    };
+
+                    /* SETTINGS */
+                    var setLangEn = document.getElementById('set-lang-en');
+                    var setLangTa = document.getElementById('set-lang-ta');
+                    if (setLangEn) setLangEn.onclick = function () { state.language = 'en'; saveState(); rerender(); };
+                    if (setLangTa) setLangTa.onclick = function () { state.language = 'ta'; saveState(); rerender(); };
+                    ['sw-notifications', 'sw-weather', 'sw-reminders'].forEach(function (id, idx) {
+                        var el = document.getElementById(id);
+                        if (!el) return;
+                        var keys = ['notifications', 'weatherAlerts', 'reminders'];
+                        var key = keys[idx];
+                        var toggle = function () { state.settings[key] = !state.settings[key]; saveState(); rerender(); };
+                        el.onclick = toggle;
+                        el.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } };
+                    });
+                    var clearHistoryBtn = document.getElementById('btn-clear-history');
+                    if (clearHistoryBtn) clearHistoryBtn.onclick = function () {
+                        showConfirm(t('clear_confirm_t'), t('clear_confirm_d'), t('clear_scan_history')).then(function (ok) {
+                            if (ok) { state.scans = []; saveState(); rerender(); }
+                        });
+                    };
+
+                    var changeLocBtn = document.getElementById('change-location');
+                    if (changeLocBtn) changeLocBtn.onclick = function () { toast(state.language === 'ta' ? 'இந்த முன்மாதிரியில் இடம் நிலையானது' : 'Location is fixed in this prototype'); };
+                }
+
+                /* boot */
+                rerender();
+
+            })();
+    </script>
+</body>
+
+</html>
